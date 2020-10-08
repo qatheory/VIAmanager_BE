@@ -18,7 +18,6 @@ from django.contrib import admin
 from django.contrib.auth.models import User, Group
 from rest_framework.urlpatterns import format_suffix_patterns
 
-
 # from rest_framework import viewsets
 # from rest_framework import permissions
 from rest_framework import routers, serializers
@@ -27,11 +26,9 @@ from rest_framework import routers, serializers
 # Wire up our API using automatic URL routing.
 # Additionally, we include login URLs for the browsable API.
 urlpatterns = [
-    path('', include('snippets.urls')),
-    path('', include('users.urls')),
-    path('', include('workspaces.urls')),
-    path('', include('vias.urls')),
-    path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
+    path('', include('apis.urls')),
+    path('api-auth/', include('rest_framework.urls',
+                              namespace='rest_framework')),
     path('admin/', admin.site.urls),
 ]
 urlpatterns = format_suffix_patterns(urlpatterns)
