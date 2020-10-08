@@ -9,7 +9,7 @@ from rest_framework import generics
 
 
 class UserList(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def get(self, request, format=None):
         users = User.objects.all()

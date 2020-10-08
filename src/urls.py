@@ -22,7 +22,6 @@ from rest_framework.urlpatterns import format_suffix_patterns
 # from rest_framework import viewsets
 # from rest_framework import permissions
 from rest_framework import routers, serializers
-from via import views
 # Serializers define the API representation.
 
 # Wire up our API using automatic URL routing.
@@ -30,6 +29,8 @@ from via import views
 urlpatterns = [
     path('', include('snippets.urls')),
     path('', include('users.urls')),
+    path('', include('workspaces.urls')),
+    path('', include('vias.urls')),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('admin/', admin.site.urls),
 ]
