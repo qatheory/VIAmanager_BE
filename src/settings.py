@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 """
 
 from pathlib import Path
+import datetime
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -31,9 +32,8 @@ ALLOWED_HOSTS = []
 INSTALLED_APPS = [
     'django.contrib.admin', 'django.contrib.auth',
     'django.contrib.contenttypes', 'django.contrib.sessions',
-    'django.contrib.messages', 'django.contrib.staticfiles',
-    'rest_framework', 'corsheaders',
-    'apis.apps.ApisConfig'
+    'django.contrib.messages', 'django.contrib.staticfiles', 'rest_framework',
+    'corsheaders', 'apis.apps.ApisConfig'
 ]
 
 MIDDLEWARE = [
@@ -44,8 +44,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.common.CommonMiddleware',
+    'corsheaders.middleware.CorsMiddleware'
 ]
 
 ROOT_URLCONF = 'src.urls'
@@ -72,9 +71,8 @@ REST_FRAMEWORK = {
     # 'DEFAULT_PERMISSION_CLASSES': [
     #     'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
     # ],
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
-    ),
+    'DEFAULT_PERMISSION_CLASSES':
+    ('rest_framework.permissions.IsAuthenticated', ),
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_jwt.authentication.JSONWebTokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
@@ -87,9 +85,11 @@ REST_FRAMEWORK = {
 WSGI_APPLICATION = 'src.wsgi.application'
 
 JWT_AUTH = {
-    'JWT_RESPONSE_PAYLOAD_HANDLER':   'apis.utils.custom_jwt_response_handler'
+    'JWT_RESPONSE_PAYLOAD_HANDLER': 'apis.utils.custom_jwt_response_handler',
+    'JWT_ALLOW_REFRESH': True,
+    'JWT_EXPIRATION_DELTA': datetime.timedelta(days=7),
+    'JWT_REFRESH_EXPIRATION_DELTA': datetime.timedelta(days=60),
 }
-
 
 # Database
 # https://docs.djangoproject.com/en/3.1/ref/settings/#databases
@@ -101,12 +101,9 @@ DATABASES = {
     }
 }
 
-CORS_ORIGIN_WHITELIST = (
-    'http://localhost:3005',
-)
-
+CORS_ORIGIN_WHITELIST = ('http://localhost:3005', )
 CORS_ALLOW_CREDENTIALS = True
-
+ALLOWED_HOSTS = ['*']
 # Password validation
 # https://docs.djangoproject.com/en/3.1/ref/settings/#auth-password-validators
 

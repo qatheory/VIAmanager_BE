@@ -69,14 +69,21 @@ class CreateUserView(APIView):
         if serializer.is_valid():
             saved_user = serializer.save()
         else:
-            return Response({"response": "error", "message": serializer.errors})
-        return Response({"response": "success", "message": "user created succesfully"})
+            return Response({
+                "response": "error",
+                "message": serializer.errors
+            })
+        return Response({
+            "response": "success",
+            "message": "user created succesfully"
+        })
 
 
 @api_view(['GET'])
 def get_current_user(request):
     serializer = UserFullSerializer(request.user)
     return Response(serializer.data)
+
 
 # VIA APIViews
 
@@ -85,8 +92,15 @@ class ViaList(APIView):
 
     permission_classes = [permissions.IsAuthenticated]
 
+    def getQuerySet(self, workspaceID):
+        query = Via.objects.all()
+        if workspaceID is not None:
+            query = query.filter(workspace=workspaceID)
+        return query
+
     def get(self, request, format=None):
-        vias = Via.objects.all()
+        workspaceID = request.query_params.get('workspace', None)
+        vias = self.getQuerySet(workspaceID)
         serializer = ViasSerializer(vias, many=True)
         return Response(serializer.data)
 

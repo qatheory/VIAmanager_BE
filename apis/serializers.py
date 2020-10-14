@@ -1,27 +1,35 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from apis.models import Workspace, Via
+from apis.models import Workspace, Via, BM
 from rest_framework_jwt.settings import api_settings
-# Via
 
 
+# Serializers
 class ViasSerializer(serializers.ModelSerializer):
     class Meta:
         model = Via
         fields = [
-            'id', 'name', 'via_id', 'tfa', 'status', 'createdDate', 'workspace'
+            'id', 'name', 'password', 'label', 'email', 'tfa', 'status',
+            'createdDate', 'workspace'
         ]
 
 
-# Workspace
 class WorkspaceSerializer(serializers.ModelSerializer):
     vias = serializers.PrimaryKeyRelatedField(many=True,
                                               queryset=Via.objects.all())
+    bms = serializers.PrimaryKeyRelatedField(many=True,
+                                             queryset=BM.objects.all())
     createdBy = serializers.ReadOnlyField(source='createdBy.username')
 
     class Meta:
         model = Workspace
-        fields = ['id', 'name', 'vias', 'createdBy', 'createdDate']
+        fields = ['id', 'name', 'vias', 'bms', 'createdBy', 'createdDate']
+
+
+class WorkspaceId(serializers.ModelSerializer):
+    class Meta:
+        model = Workspace
+        fields = ['id', 'name']
 
 
 class WorkspaceUserShort(serializers.ModelSerializer):
@@ -36,7 +44,7 @@ class WorkspaceFullSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Workspace
-        fields = ['id', 'name', 'vias', 'createdBy', 'createdDate']
+        fields = ['id', 'name', 'vias', 'bms', 'createdBy', 'createdDate']
 
 
 # User
@@ -68,16 +76,13 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserUpdate(serializers.ModelSerializer):
-
     class Meta:
         model = User
-        fields = [
-            "first_name", "last_name"
-        ]
+        fields = ["first_name", "last_name"]
 
 
 class UserFullSerializer(serializers.ModelSerializer):
-    workspaces = WorkspaceFullSerializer(many=True, read_only=True)
+    workspaces = WorkspaceId(many=True, read_only=True)
 
     class Meta:
         model = User
