@@ -37,6 +37,12 @@ class Workspace(models.Model):
     name = models.CharField(max_length=100,
                             blank=True,
                             default="new Workspace")
+    accessToken = models.CharField(max_length=200,
+                                   blank=True,
+                                   )
+    appID = models.CharField(max_length=100,
+                             blank=True,
+                             )
     createdBy = models.ForeignKey('auth.User',
                                   related_name='workspaces',
                                   on_delete=models.CASCADE)

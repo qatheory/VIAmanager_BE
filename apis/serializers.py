@@ -2,15 +2,25 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from apis.models import Workspace, Via, BM
 from rest_framework_jwt.settings import api_settings
-
+import requests
 
 # Serializers
+
+
 class ViasSerializer(serializers.ModelSerializer):
     class Meta:
         model = Via
         fields = [
             'id', 'name', 'password', 'label', 'email', 'tfa', 'status',
             'createdDate', 'workspace'
+        ]
+
+
+class BMsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BM
+        fields = [
+            'id', 'name', 'accessToken', 'appID',  'createdDate', 'workspace'
         ]
 
 
@@ -23,7 +33,8 @@ class WorkspaceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Workspace
-        fields = ['id', 'name', 'vias', 'bms', 'createdBy', 'createdDate']
+        fields = ['id', 'name', 'accessToken', 'appID',
+                  'vias', 'bms', 'createdBy', 'createdDate']
 
 
 class WorkspaceId(serializers.ModelSerializer):
@@ -44,7 +55,8 @@ class WorkspaceFullSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Workspace
-        fields = ['id', 'name', 'vias', 'bms', 'createdBy', 'createdDate']
+        fields = ['id', 'name', 'accessToken', 'appID',
+                  'vias', 'bms', 'createdBy', 'createdDate']
 
 
 # User
