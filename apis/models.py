@@ -4,12 +4,19 @@ from django.db import models
 class Via(models.Model):
     createdDate = models.DateTimeField(auto_now_add=True)
     name = models.CharField(max_length=100, blank=True, default="new Via")
-    alternativeName = models.CharField(max_length=100, blank=True)
-    email = models.CharField(max_length=100, blank=True)
-    status = models.SmallIntegerField(blank=True, default=1)
-    password = models.CharField(max_length=100, blank=True)
-    label = models.TextField(blank=True)
     tfa = models.TextField(blank=True)
+    accessToken = models.TextField(blank=True)
+    fbid = models.CharField(max_length=100, blank=True)
+    password = models.CharField(max_length=100, blank=True)
+    email = models.CharField(max_length=100, blank=True)
+    emailPassword = models.CharField(max_length=100, blank=True)
+    fbName = models.CharField(max_length=100, blank=True, )
+    gender = models.SmallIntegerField(blank=True, null=True)
+    dateOfBirth = models.DateTimeField(blank=True, null=True)
+    fbLink = models.TextField(blank=True)
+    status = models.SmallIntegerField(blank=True, default=1)
+    label = models.TextField(blank=True)
+
     workspace = models.ForeignKey('apis.Workspace',
                                   related_name='vias',
                                   on_delete=models.CASCADE)
@@ -40,9 +47,6 @@ class Workspace(models.Model):
     accessToken = models.CharField(max_length=200,
                                    blank=True,
                                    )
-    appID = models.CharField(max_length=100,
-                             blank=True,
-                             )
     createdBy = models.ForeignKey('auth.User',
                                   related_name='workspaces',
                                   on_delete=models.CASCADE)

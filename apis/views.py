@@ -117,38 +117,47 @@ def get_bm(request):
     return Response({"error": "error"})
 
 
+def get_workspace_from_id(workspaceID):
+    try:
+        return Workspace.objects.get(pk=workspaceID)
+    except Workspace.DoesNotExist:
+        raise Http404
+
+
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
 def get_ads_acc(request):
     workspaceID = request.query_params.get('workspace', None)
     if workspaceID is not None:
-        workspace = Workspace.objects.get(pk=workspaceID)
-        serializer = WorkspaceSerializer(workspace)
-        viaID = serializer.data["appID"]
-        viaName = serializer.data["name"]
-        access_token = serializer.data["accessToken"]
-        resp = requests.get(
-            url=f"https://graph.facebook.com/v8.0/{viaID}/adaccounts", params={
-                "access_token": access_token
-            })
-        listAdsAccountsID = resp.json()['data']
-        listAdsAccountsInfo = []
-        for adsAccount in listAdsAccountsID:
-            adsAccountID = adsAccount["id"]
-            rawAdsAccountInfo = requests.get(
-                url=f"https://graph.facebook.com/v8.0/{adsAccountID}/", params={
-                    "fields": "name,account_status,amount_spent,balance,disable_reason",
-                    "access_token": access_token
-                })
-            adsAccountInfo = rawAdsAccountInfo.json()
-            adsAccountInfo["viaID"] = viaID
-            adsAccountInfo["via"] = viaName
-            print(adsAccountInfo)
-            listAdsAccountsInfo.append(adsAccountInfo)
+        getworkspace = get_workspace_from_id(workspaceID)
+        workspacesz = WorkspaceSerializer(getworkspace)
+        access_token = workspacesz.data["accessToken"]
+        vias = Via.objects.filter(workspace=workspaceID)
+        viasz = ViasSerializer(vias, many=True)
+        # for via in viasz.json()["data"]:
+
+        # resp = requests.get(
+        #     url=f"https://graph.facebook.com/v8.0/{viaID}/adaccounts", params={
+        #         "access_token": access_token
+        #     })
+        # listAdsAccountsID = resp.json()['data']
+        # listAdsAccountsInfo = []
+        # for adsAccount in listAdsAccountsID:
+        #     adsAccountID = adsAccount["id"]
+        #     rawAdsAccountInfo = requests.get(
+        #         url=f"https://graph.facebook.com/v8.0/{adsAccountID}/", params={
+        #             "fields": "name,account_status,amount_spent,balance,disable_reason",
+        #             "access_token": access_token
+        #         })
+        #     adsAccountInfo = rawAdsAccountInfo.json()
+        #     adsAccountInfo["viaID"] = viaID
+        #     adsAccountInfo["via"] = viaName
+        #     print(adsAccountInfo)
+        #     listAdsAccountsInfo.append(adsAccountInfo)
         return Response(
             {
                 "success": "true",
-                "data": listAdsAccountsInfo
+                # "data": listAdsAccountsInfo
             })
     return Response({"error": "error"})
 # VIA APIViews

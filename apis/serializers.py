@@ -11,8 +11,22 @@ class ViasSerializer(serializers.ModelSerializer):
     class Meta:
         model = Via
         fields = [
-            'id', 'name', 'password', 'label', 'email', 'tfa', 'status',
-            'createdDate', 'workspace'
+            'id',
+            'name',
+            'tfa',
+            'fbid',
+            'accessToken',
+            'password',
+            'email',
+            'emailPassword',
+
+            'fbName',
+            'dateOfBirth',
+            'gender',
+            'fbLink',
+            'status',
+            'label',
+            'workspace'
         ]
 
 
@@ -33,7 +47,7 @@ class WorkspaceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Workspace
-        fields = ['id', 'name', 'accessToken', 'appID',
+        fields = ['id', 'name', 'accessToken',
                   'vias', 'bms', 'createdBy', 'createdDate']
 
 
@@ -55,7 +69,7 @@ class WorkspaceFullSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Workspace
-        fields = ['id', 'name', 'accessToken', 'appID',
+        fields = ['id', 'name', 'accessToken',
                   'vias', 'bms', 'createdBy', 'createdDate']
 
 
