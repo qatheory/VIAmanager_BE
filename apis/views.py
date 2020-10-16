@@ -134,12 +134,18 @@ def get_ads_acc(request):
         access_token = workspacesz.data["accessToken"]
         vias = Via.objects.filter(workspace=workspaceID)
         viasz = ViasSerializer(vias, many=True)
-        # for via in viasz.json()["data"]:
-
-        # resp = requests.get(
-        #     url=f"https://graph.facebook.com/v8.0/{viaID}/adaccounts", params={
-        #         "access_token": access_token
-        #     })
+        listVias = viasz.data
+        print(viasz.data)
+        listAdsAcc = []
+        for via, index in viasz.data.items():
+            print(via)
+            # adsAccIds = requests.get(
+            #     url=f"https://graph.facebook.com/v8.0/{via.fbid}", params={
+            #         "access_token": via.accessToken,
+            #         "fields": "adaccounts"
+            #     })
+            # listAdsAcc.append(listAdsAcc.json()['data'])
+        print(listAdsAcc)
         # listAdsAccountsID = resp.json()['data']
         # listAdsAccountsInfo = []
         # for adsAccount in listAdsAccountsID:
