@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from apis.models import Workspace, Via, BM
+from apis.models import Via, BM
 from rest_framework_jwt.settings import api_settings
 import requests
 
@@ -11,72 +11,56 @@ class ViasSerializer(serializers.ModelSerializer):
     class Meta:
         model = Via
         fields = [
-            'id',
-            'name',
-            'tfa',
-            'fbid',
-            'accessToken',
-            'password',
-            'email',
-            'emailPassword',
-
-            'fbName',
-            'dateOfBirth',
-            'gender',
-            'fbLink',
-            'status',
-            'label',
-            'workspace'
+            'id', 'name', 'tfa', 'fbid', 'accessToken', 'password', 'email',
+            'emailPassword', 'fbName', 'dateOfBirth', 'gender', 'fbLink',
+            'status', 'label'
         ]
 
 
 class BMsSerializer(serializers.ModelSerializer):
     class Meta:
         model = BM
-        fields = [
-            'id', 'name', 'accessToken', 'appID',  'createdDate', 'workspace'
-        ]
+        fields = ['id', 'name', 'accessToken', 'appID', 'createdDate']
 
 
-class WorkspaceSerializer(serializers.ModelSerializer):
-    vias = serializers.PrimaryKeyRelatedField(many=True,
-                                              queryset=Via.objects.all())
-    bms = serializers.PrimaryKeyRelatedField(many=True,
-                                             queryset=BM.objects.all())
-    createdBy = serializers.ReadOnlyField(source='createdBy.username')
+# class WorkspaceSerializer(serializers.ModelSerializer):
+#     vias = serializers.PrimaryKeyRelatedField(many=True,
+#                                               queryset=Via.objects.all())
+#     bms = serializers.PrimaryKeyRelatedField(many=True,
+#                                              queryset=BM.objects.all())
+#     createdBy = serializers.ReadOnlyField(source='createdBy.username')
 
-    class Meta:
-        model = Workspace
-        fields = ['id', 'name', 'accessToken',
-                  'vias', 'bms', 'createdBy', 'createdDate']
+#     class Meta:
+#         model = Workspace
+#         fields = [
+#             'id', 'name', 'accessToken', 'vias', 'bms', 'createdBy',
+#             'createdDate'
+#         ]
 
+# class WorkspaceId(serializers.ModelSerializer):
+#     class Meta:
+#         model = Workspace
+#         fields = ['id', 'name']
 
-class WorkspaceId(serializers.ModelSerializer):
-    class Meta:
-        model = Workspace
-        fields = ['id', 'name']
+# class WorkspaceUserShort(serializers.ModelSerializer):
+#     class Meta:
+#         model = User
+#         fields = ['id', 'username']
 
+# class WorkspaceFullSerializer(serializers.ModelSerializer):
+#     vias = ViasSerializer(many=True, read_only=True)
+#     createdBy = WorkspaceUserShort(read_only=True)
 
-class WorkspaceUserShort(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['id', 'username']
-
-
-class WorkspaceFullSerializer(serializers.ModelSerializer):
-    vias = ViasSerializer(many=True, read_only=True)
-    createdBy = WorkspaceUserShort(read_only=True)
-
-    class Meta:
-        model = Workspace
-        fields = ['id', 'name', 'accessToken',
-                  'vias', 'bms', 'createdBy', 'createdDate']
+#     class Meta:
+#         model = Workspace
+#         fields = [
+#             'id', 'name', 'accessToken', 'vias', 'bms', 'createdBy',
+#             'createdDate'
+# ]
 
 
 # User
 class UserSerializer(serializers.ModelSerializer):
-    workspaces = serializers.PrimaryKeyRelatedField(
-        many=True, queryset=Workspace.objects.all())
     password = serializers.CharField(write_only=True)
     token = serializers.SerializerMethodField()
 
@@ -90,8 +74,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id', 'username', 'token', "first_name", "last_name", 'workspaces',
-            'password'
+            'id', 'username', 'token', "first_name", "last_name", 'password'
         ]
 
     def create(self, validated_data):
@@ -108,8 +91,6 @@ class UserUpdate(serializers.ModelSerializer):
 
 
 class UserFullSerializer(serializers.ModelSerializer):
-    workspaces = WorkspaceId(many=True, read_only=True)
-
     class Meta:
         model = User
         fields = [
@@ -117,5 +98,4 @@ class UserFullSerializer(serializers.ModelSerializer):
             'username',
             "first_name",
             "last_name",
-            'workspaces',
         ]
