@@ -9,7 +9,7 @@ urlpatterns = [
     # path('workspace/<int:pk>/', views.WorkspaceDetail.as_view()),
     path('vias/', views.ViaList.as_view()),
     path('via/<int:pk>/', views.ViaDetail.as_view()),
-    path('bms/', views.get_bm),
+    # path('bms/', views.get_bm),
     path('ads_acc/', views.get_ads_acc),
     path('bms/<int:pk>/', views.BMDetail.as_view()),
 ]
