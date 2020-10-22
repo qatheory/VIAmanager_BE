@@ -162,8 +162,30 @@ class AdsAccList(APIView):
 
     def get(self, request, format=None):
         vias = Via.objects.all()
-        serializer = ViasSerializer(vias, many=True)
-        return Response(serializer.data)
+        viasz = ViasSerializer(vias, many=True)
+        listVias = viasz.data
+        listAdsAcc = []
+        for via in viasz.data:
+            adsAccFromID = requests.get(
+                url="https://graph.facebook.com/v8.0/{}".format(via["fbid"]), params={
+                    "access_token": via["accessToken"],
+                    "fields": "name,adaccounts{name,account_status,amount_spent,balance,business,disable_reason,is_prepay_account,spend_cap}"
+                })
+            ownerId = adsAccFromID.json()["id"]
+            ownerName = adsAccFromID.json()["name"]
+            for adsAcc in adsAccFromID.json()["adaccounts"]["data"]:
+                for account in listAdsAcc:
+                    if account['id'] == adsAcc["id"]:
+                        account["owner"] += {"id": ownerId,
+                                             "name": ownerName, "via": via["name"]}
+                        break
+                else:
+                    adsAcc["owner"] = {"id": ownerId,
+                                       "name": ownerName, "via": via["name"]}
+                    listAdsAcc.append(adsAcc)
+
+        print(listAdsAcc)
+        return Response(listAdsAcc)
 
     def post(self, request, format=None):
         serializer = ViasSerializer(data=request.data)
