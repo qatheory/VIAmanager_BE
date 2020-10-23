@@ -161,7 +161,7 @@ class AdsAccList(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, format=None):
-        vias = Via.objects.all()
+        vias = Via.objects.filter(isDeleted=False)
         viasz = ViasSerializer(vias, many=True)
         listVias = viasz.data
         listAdsAcc = []
@@ -176,12 +176,12 @@ class AdsAccList(APIView):
             for adsAcc in adsAccFromID.json()["adaccounts"]["data"]:
                 for account in listAdsAcc:
                     if account['id'] == adsAcc["id"]:
-                        account["owner"] += {"id": ownerId,
-                                             "name": ownerName, "via": via["name"]}
+                        account["owner"] += [{"id": ownerId,
+                                              "name": ownerName, "via": via["name"]}]
                         break
                 else:
-                    adsAcc["owner"] = {"id": ownerId,
-                                       "name": ownerName, "via": via["name"]}
+                    adsAcc["owner"] = [{"id": ownerId,
+                                        "name": ownerName, "via": via["name"]}]
                     listAdsAcc.append(adsAcc)
 
         print(listAdsAcc)
@@ -200,7 +200,27 @@ class ViaList(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, format=None):
-        vias = Via.objects.all()
+        name = request.GET.get('name', None)
+        email = request.GET.get('email', None)
+        fbName = request.GET.get('fbName', None)
+        fbid = request.GET.get('fbid', None)
+        label = request.GET.get('label', None)
+        status = request.GET.get('status', None)
+        vias = Via.objects.filter(isDeleted=False)
+
+        if(name):
+            vias = vias.filter(name__contains=name)
+        if(fbName):
+            vias = vias.filter(fbName__contains=fbName)
+        if(email):
+            vias = vias.filter(email__contains=email)
+        if(fbid):
+            vias = vias.filter(fbid=fbid)
+        if(label):
+            vias = vias.filter(label=label)
+        if(status):
+            vias = vias.filter(status=status)
+
         serializer = ViasSerializer(vias, many=True)
         return Response(serializer.data)
 
@@ -234,10 +254,10 @@ class ViaDetail(APIView):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def delete(self, request, pk, format=None):
-        via = self.get_object(pk)
-        via.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    # def delete(self, request, pk, format=None):
+    #     via = self.get_object(pk)
+    #     via.delete()
+    #     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class BMList(APIView):

@@ -13,7 +13,7 @@ class ViasSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'tfa', 'fbid', 'accessToken', 'password', 'email',
             'emailPassword', 'fbName', 'dateOfBirth', 'gender', 'fbLink',
-            'status', 'label'
+            'status', 'label', 'isDeleted'
         ]
 
 

@@ -19,7 +19,7 @@ class Via(models.Model):
     fbLink = models.TextField(blank=True)
     status = models.SmallIntegerField(blank=True, default=1)
     label = models.TextField(blank=True)
-
+    isDeleted = models.BooleanField(default=False)
     # workspace = models.ForeignKey('apis.Workspace',
     #                               related_name='vias',
     #                               on_delete=models.CASCADE)
