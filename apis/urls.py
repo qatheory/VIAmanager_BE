@@ -3,6 +3,7 @@ from apis import views
 
 urlpatterns = [
     path('users/', views.UserList.as_view()),
+    path('user/reset-password/<int:pk>/', views.UserResetPassword.as_view()),
     path('user/<int:pk>/', views.UserDetail.as_view()),
     path('current_user/', views.get_current_user),
     # path('workspaces/', views.WorkspaceList.as_view()),

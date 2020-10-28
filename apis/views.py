@@ -5,7 +5,7 @@ from rest_framework import status
 from django.contrib.auth.models import User
 from rest_framework import permissions, authentication
 from rest_framework import generics
-from apis.serializers import UserSerializer, UserFullSerializer, UserUpdate
+from apis.serializers import UserSerializer, UserFullSerializer, UserUpdate, UserResetPasswordSerializer
 from apis.serializers import ViasSerializer, BmsSerializer
 from apis.models import Via, Bm
 from rest_framework.decorators import api_view, permission_classes
@@ -23,7 +23,7 @@ class isAdminOrReadOnly(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return True
         user = request.user
-        if user and user.is_authenticated():
+        if user and user.is_authenticated:
             return user.is_superuser or \
                 not any(isinstance(request._authenticator, x) for x in self.ADMIN_ONLY_AUTH_CLASSES)
         return False
@@ -77,6 +77,24 @@ class UserDetail(APIView):
         user = self.get_object(pk)
         user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class UserResetPassword(APIView):
+    permission_classes = [isAdminOrReadOnly]
+
+    def get_object(self, pk):
+        try:
+            return User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            raise Http404
+
+    def put(self, request, pk, format=None):
+        user = self.get_object(pk)
+        serializer = UserResetPasswordSerializer(user, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class CreateUserView(APIView):
