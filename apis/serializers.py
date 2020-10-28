@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from apis.models import Via, BM
+from apis.models import Via, Bm
 from rest_framework_jwt.settings import api_settings
 import requests
 
@@ -17,9 +17,9 @@ class ViasSerializer(serializers.ModelSerializer):
         ]
 
 
-class BMsSerializer(serializers.ModelSerializer):
+class BmsSerializer(serializers.ModelSerializer):
     class Meta:
-        model = BM
+        model = Bm
         fields = ['id', 'name', 'accessToken', 'appID', 'createdDate']
 
 

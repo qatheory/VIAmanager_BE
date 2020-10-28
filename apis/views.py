@@ -6,16 +6,34 @@ from django.contrib.auth.models import User
 from rest_framework import permissions, authentication
 from rest_framework import generics
 from apis.serializers import UserSerializer, UserFullSerializer, UserUpdate
-from apis.serializers import ViasSerializer, BMsSerializer
-from apis.models import Via, BM
+from apis.serializers import ViasSerializer, BmsSerializer
+from apis.models import Via, Bm
 from rest_framework.decorators import api_view, permission_classes
+from django.db.models import Q
 import requests
+
+
+class isAdminOrReadOnly(permissions.BasePermission):
+    ADMIN_ONLY_AUTH_CLASSES = [
+        authentication.BasicAuthentication,
+        authentication.SessionAuthentication
+    ]
+
+    def has_permission(self, request, view):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        user = request.user
+        if user and user.is_authenticated():
+            return user.is_superuser or \
+                not any(isinstance(request._authenticator, x) for x in self.ADMIN_ONLY_AUTH_CLASSES)
+        return False
+
 
 # User APIView
 
 
 class UserList(APIView):
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [isAdminOrReadOnly]
 
     def get(self, request, format=None):
         users = User.objects.all()
@@ -34,6 +52,8 @@ class UserList(APIView):
 
 
 class UserDetail(APIView):
+    permission_classes = [isAdminOrReadOnly]
+
     def get_object(self, pk):
         try:
             return User.objects.get(pk=pk)
@@ -124,7 +144,7 @@ def get_ads_acc(request):
     viasz = ViasSerializer(vias, many=True)
     listVias = viasz.data
     print(viasz.data)
-    listAdsAcc = []
+    mergedListAdsAcc = []
     for via, index in viasz.data.items():
         print(via)
         # adsAccIds = requests.get(
@@ -132,11 +152,11 @@ def get_ads_acc(request):
         #         "access_token": via.accessToken,
         #         "fields": "adaccounts"
         #     })
-        # listAdsAcc.append(listAdsAcc.json()['data'])
-    print(listAdsAcc)
-    # listAdsAccountsID = resp.json()['data']
-    # listAdsAccountsInfo = []
-    # for adsAccount in listAdsAccountsID:
+        # mergedListAdsAcc.append(mergedListAdsAcc.json()['data'])
+    print(mergedListAdsAcc)
+    # mergedListAdsAccountsID = resp.json()['data']
+    # mergedListAdsAccountsInfo = []
+    # for adsAccount in mergedListAdsAccountsID:
     #     adsAccountID = adsAccount["id"]
     #     rawAdsAccountInfo = requests.get(
     #         url=f"https://graph.facebook.com/v8.0/{adsAccountID}/", params={
@@ -147,10 +167,10 @@ def get_ads_acc(request):
     #     adsAccountInfo["viaID"] = viaID
     #     adsAccountInfo["via"] = viaName
     #     print(adsAccountInfo)
-    #     listAdsAccountsInfo.append(adsAccountInfo)
+    #     mergedListAdsAccountsInfo.append(adsAccountInfo)
     return Response({
         "success": "true",
-        # "data": listAdsAccountsInfo
+        # "data": mergedListAdsAccountsInfo
     })
 
 
@@ -160,32 +180,69 @@ def get_ads_acc(request):
 class AdsAccList(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    def filterAdsAccByStatus(self, statusFilter, adsAcc):
+        if (statusFilter != "0"):
+            if (statusFilter == "1"):
+                return (adsAcc["account_status"] == 1
+                        or adsAcc["account_status"] == 201)
+            elif (statusFilter == "2"):
+                return (adsAcc["account_status"] == 2
+                        or adsAcc["account_status"] == 101
+                        or adsAcc["account_status"] == 102
+                        or adsAcc["account_status"] == 202)
+            elif (statusFilter == "3"):
+                return (adsAcc["account_status"] == 3
+                        or adsAcc["account_status"] == 7
+                        or adsAcc["account_status"] == 8
+                        or adsAcc["account_status"] == 9)
+        else:
+            return True
+
     def get(self, request, format=None):
+        viaFilter = request.GET.get('via', None)
+        statusFilter = request.GET.get('status', None)
         vias = Via.objects.filter(isDeleted=False)
+        if (viaFilter):
+            vias = vias.filter(id=viaFilter)
+
         viasz = ViasSerializer(vias, many=True)
         listVias = viasz.data
-        listAdsAcc = []
+        mergedListAdsAcc = []
         for via in viasz.data:
             adsAccFromID = requests.get(
-                url="https://graph.facebook.com/v8.0/{}".format(via["fbid"]), params={
-                    "access_token": via["accessToken"],
-                    "fields": "name,adaccounts{name,account_status,amount_spent,balance,business,disable_reason,is_prepay_account,spend_cap}"
+                url="https://graph.facebook.com/v8.0/{}".format(via["fbid"]),
+                params={
+                    "access_token":
+                    via["accessToken"],
+                    "fields":
+                    "name,adaccounts{name,account_status,amount_spent,balance,business,disable_reason,is_prepay_account,spend_cap}"
                 })
             ownerId = adsAccFromID.json()["id"]
             ownerName = adsAccFromID.json()["name"]
-            for adsAcc in adsAccFromID.json()["adaccounts"]["data"]:
-                for account in listAdsAcc:
+            ListAdsAcc = filter(
+                lambda x: (self.filterAdsAccByStatus(statusFilter, x)),
+                adsAccFromID.json()["adaccounts"]["data"])
+            for adsAcc in ListAdsAcc:
+
+                for account in mergedListAdsAcc:
                     if account['id'] == adsAcc["id"]:
-                        account["owner"] += [{"id": ownerId,
-                                              "name": ownerName, "via": via["name"]}]
+                        account["owner"] += [{
+                            "id": ownerId,
+                            "name": ownerName,
+                            "via": via["name"],
+                            "viaId": via["id"]
+                        }]
                         break
                 else:
-                    adsAcc["owner"] = [{"id": ownerId,
-                                        "name": ownerName, "via": via["name"]}]
-                    listAdsAcc.append(adsAcc)
+                    adsAcc["owner"] = [{
+                        "id": ownerId,
+                        "name": ownerName,
+                        "via": via["name"],
+                        "viaId": via["id"]
+                    }]
+                    mergedListAdsAcc.append(adsAcc)
 
-        print(listAdsAcc)
-        return Response(listAdsAcc)
+        return Response(mergedListAdsAcc)
 
     def post(self, request, format=None):
         serializer = ViasSerializer(data=request.data)
@@ -200,6 +257,7 @@ class ViaList(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, format=None):
+        viaId = request.GET.get('id', None)
         name = request.GET.get('name', None)
         email = request.GET.get('email', None)
         fbName = request.GET.get('fbName', None)
@@ -207,18 +265,19 @@ class ViaList(APIView):
         label = request.GET.get('label', None)
         status = request.GET.get('status', None)
         vias = Via.objects.filter(isDeleted=False)
-
-        if(name):
+        if (viaId):
+            vias = vias.filter(id__in=viaId.split(","))
+        if (name):
             vias = vias.filter(name__contains=name)
-        if(fbName):
+        if (fbName):
             vias = vias.filter(fbName__contains=fbName)
-        if(email):
+        if (email):
             vias = vias.filter(email__contains=email)
-        if(fbid):
+        if (fbid):
             vias = vias.filter(fbid=fbid)
-        if(label):
+        if (label):
             vias = vias.filter(label=label)
-        if(status):
+        if (status):
             vias = vias.filter(status=status)
 
         serializer = ViasSerializer(vias, many=True)
@@ -244,6 +303,7 @@ class ViaDetail(APIView):
     def get(self, request, pk, format=None):
         via = self.get_object(pk)
         serializer = ViasSerializer(via)
+
         return Response(serializer.data)
 
     def put(self, request, pk, format=None):
@@ -260,30 +320,79 @@ class ViaDetail(APIView):
     #     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class BMList(APIView):
+class BmList(APIView):
 
     permission_classes = [permissions.IsAuthenticated]
 
+    def filterBmByStatus(self, statusFilter, bm):
+        if (statusFilter != "0"):
+            if (statusFilter == "1"):
+                return (bm["verification_status"] == "verified")
+            elif (statusFilter == "2"):
+                return (bm["verification_status"] == "not_verified")
+        else:
+            return True
+
     def get(self, request, format=None):
-        bms = BM.objects.all()
-        serializer = BMsSerializer(bms, many=True)
-        return Response(serializer.data)
+        viaFilter = request.GET.get('via', None)
+        statusFilter = request.GET.get('status', None)
+        vias = Via.objects.filter(isDeleted=False)
+        if (viaFilter):
+            vias = vias.filter(id=viaFilter)
+        vias = Via.objects.filter(isDeleted=False)
+        viasz = ViasSerializer(vias, many=True)
+        listVias = viasz.data
+        listBmId = []
+        listBm = []
+        for via in viasz.data:
+            bmsFromUserId = requests.get(
+                url="https://graph.facebook.com/v8.0/{}/businesses".format(
+                    via["fbid"]),
+                params={
+                    "access_token": via["accessToken"],
+                })
+            ownerId = via["id"]
+            ownerName = via["name"]
+
+            bmsFromUserId = bmsFromUserId.json()["data"]
+            for bmfromUserId in bmsFromUserId:
+
+                for bm in listBm:
+                    if bm["id"] == bmfromUserId["id"]:
+                        bm["owner"] += [{"id": ownerId, "name": ownerName}]
+                        break
+                else:
+                    bmid = bmfromUserId["id"]
+                    listBmId.append(bmid)
+                    bmInfoRaw = requests.get(
+                        url="https://graph.facebook.com/v8.0/{}".format(bmid),
+                        params={
+                            "fields":
+                            "id,name,link,verification_status,payment_account_id",
+                            "access_token": via["accessToken"]
+                        })
+                    bmInfo = bmInfoRaw.json()
+                    bmInfo["owner"] = [{"id": ownerId, "name": ownerName}]
+                    listBm.append(bmInfo)
+        listBmFilterd = filter(
+            lambda x: (self.filterBmByStatus(statusFilter, x)), listBm)
+        return Response(listBmFilterd)
 
     def post(self, request, format=None):
-        serializer = BMsSerializer(data=request.data)
+        serializer = BmsSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class BMDetail(APIView):
+class BmDetail(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self, pk):
         try:
-            return BM.objects.get(pk=pk)
-        except BM.DoesNotExist:
+            return Bm.objects.get(pk=pk)
+        except Bm.DoesNotExist:
             raise Http404
 
     def get(self, request, pk, format=None):
@@ -303,6 +412,32 @@ class BMDetail(APIView):
         bm = self.get_object(pk)
         bm.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class BmAdsAcc(APIView):
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self, pk):
+        try:
+            return Via.objects.get(pk=pk)
+        except Via.DoesNotExist:
+            raise Http404
+
+    def get(self, request, format=None):
+        selectedVia = request.GET.get('via', None)
+        selectedBm = request.GET.get('bm', None)
+        via = self.get_object(selectedVia)
+        serializer = ViasSerializer(via)
+        viaInfo = serializer.data
+        bmInfo = requests.get(
+            url="https://graph.facebook.com/v8.0/{}/owned_ad_accounts/".format(
+                selectedBm),
+            params={
+                "fields": "name,account_status,disable_reason",
+                "access_token": viaInfo["accessToken"]
+            })
+        return Response(bmInfo.json()["data"])
 
 
 # Workspace APIview

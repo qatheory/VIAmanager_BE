@@ -20,6 +20,7 @@ class Via(models.Model):
     status = models.SmallIntegerField(blank=True, default=1)
     label = models.TextField(blank=True)
     isDeleted = models.BooleanField(default=False)
+
     # workspace = models.ForeignKey('apis.Workspace',
     #                               related_name='vias',
     #                               on_delete=models.CASCADE)
@@ -28,10 +29,10 @@ class Via(models.Model):
         ordering = ['createdDate']
 
 
-class BM(models.Model):
+class Bm(models.Model):
     createdDate = models.DateTimeField(auto_now_add=True)
     name = models.CharField(max_length=100, blank=True, default="new Via")
-    BMID = models.CharField(max_length=100, blank=True)
+    BmID = models.CharField(max_length=100, blank=True)
     balance = models.FloatField(blank=True)
     status = models.SmallIntegerField(blank=True, default=1)
 
