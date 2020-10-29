@@ -20,12 +20,19 @@ class isAdminOrReadOnly(permissions.BasePermission):
     ]
 
     def has_permission(self, request, view):
+        user = request.user
+        print(user.is_superuser)
+
         if request.method in permissions.SAFE_METHODS:
             return True
-        user = request.user
+
         if user and user.is_authenticated:
-            return user.is_superuser or \
-                not any(isinstance(request._authenticator, x) for x in self.ADMIN_ONLY_AUTH_CLASSES)
+            if user.is_superuser:
+                return user.is_superuser or \
+                    not any(isinstance(request._authenticator, x)
+                            for x in self.ADMIN_ONLY_AUTH_CLASSES)
+            else:
+                return False
         return False
 
 
@@ -36,7 +43,12 @@ class UserList(APIView):
     permission_classes = [isAdminOrReadOnly]
 
     def get(self, request, format=None):
+        username = request.GET.get('username', None)
         users = User.objects.all()
+        if (username):
+
+            users = users.filter(username__contains=username)
+            print(users)
         serializer = UserFullSerializer(users, many=True)
         return Response(serializer.data)
 
