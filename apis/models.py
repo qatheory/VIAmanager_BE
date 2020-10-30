@@ -28,12 +28,12 @@ class Via(models.Model):
     label = models.TextField(blank=True)
     isDeleted = models.BooleanField(default=False)
 
-    # workspace = models.ForeignKey('apis.Workspace',
-    #                               related_name='vias',
+    # workspace = models.ForeignKey("apis.Workspace",
+    #                               related_name="vias",
     #                               on_delete=models.CASCADE)
 
     class Meta:
-        ordering = ['createdDate']
+        ordering = ["createdDate"]
 
 
 class Bm(models.Model):
@@ -43,12 +43,12 @@ class Bm(models.Model):
     balance = models.FloatField(blank=True)
     status = models.SmallIntegerField(blank=True, default=1)
 
-    # workspace = models.ForeignKey('apis.Workspace',
-    #                               related_name='bms',
+    # workspace = models.ForeignKey("apis.Workspace",
+    #                               related_name="bms",
     #                               on_delete=models.CASCADE)
 
     class Meta:
-        ordering = ['createdDate']
+        ordering = ["createdDate"]
 
 
 # class Workspace(models.Model):
@@ -59,9 +59,9 @@ class Bm(models.Model):
 #     accessToken = models.CharField(max_length=200,
 #                                    blank=True,
 #                                    )
-#     createdBy = models.ForeignKey('auth.User',
-#                                   related_name='workspaces',
+#     createdBy = models.ForeignKey("auth.User",
+#                                   related_name="workspaces",
 #                                   on_delete=models.CASCADE)
 
 #     class Meta:
-#         ordering = ['createdDate']
+#         ordering = ["createdDate"]
