@@ -232,6 +232,9 @@ class AdsAccList(APIView):
         viaFilter = request.GET.get("via", None)
         statusFilter = request.GET.get("status", None)
         vias = Via.objects.filter(isDeleted=False)
+        response = {
+            "error": {"viaError": []}
+        }
         if (viaFilter):
             vias = vias.filter(id=viaFilter)
 
@@ -247,32 +250,35 @@ class AdsAccList(APIView):
                     "fields":
                     "name,adaccounts{name,account_status,amount_spent,balance,business,disable_reason,is_prepay_account,spend_cap}"
                 })
-            ownerId = adsAccFromID.json()["id"]
-            ownerName = adsAccFromID.json()["name"]
-            ListAdsAcc = filter(
-                lambda x: (self.filterAdsAccByStatus(statusFilter, x)),
-                adsAccFromID.json()["adaccounts"]["data"])
-            for adsAcc in ListAdsAcc:
+            if("error" in adsAccFromID.json()):
+                response["error"]["viaError"].append(via["name"])
+            else:
+                ownerId = adsAccFromID.json()["id"]
+                ownerName = adsAccFromID.json()["name"]
+                ListAdsAcc = filter(
+                    lambda x: (self.filterAdsAccByStatus(statusFilter, x)),
+                    adsAccFromID.json()["adaccounts"]["data"])
+                for adsAcc in ListAdsAcc:
 
-                for account in mergedListAdsAcc:
-                    if account["id"] == adsAcc["id"]:
-                        account["owner"] += [{
+                    for account in mergedListAdsAcc:
+                        if account["id"] == adsAcc["id"]:
+                            account["owner"] += [{
+                                "id": ownerId,
+                                "name": ownerName,
+                                "via": via["name"],
+                                "viaId": via["id"]
+                            }]
+                            break
+                    else:
+                        adsAcc["owner"] = [{
                             "id": ownerId,
                             "name": ownerName,
                             "via": via["name"],
                             "viaId": via["id"]
                         }]
-                        break
-                else:
-                    adsAcc["owner"] = [{
-                        "id": ownerId,
-                        "name": ownerName,
-                        "via": via["name"],
-                        "viaId": via["id"]
-                    }]
-                    mergedListAdsAcc.append(adsAcc)
-
-        return Response(mergedListAdsAcc)
+                        mergedListAdsAcc.append(adsAcc)
+        response["data"] = mergedListAdsAcc
+        return Response(response)
 
     def post(self, request, format=None):
         serializer = ViasSerializer(data=request.data)
@@ -357,7 +363,7 @@ class BmList(APIView):
     def filterBmByStatus(self, statusFilter, bm):
         if (statusFilter != "0"):
             if (statusFilter == "1"):
-                return (bm["verification_status"] == "verified")
+                return (bm["verification_status"] != "not_verified")
             elif (statusFilter == "2"):
                 return (bm["verification_status"] == "not_verified")
         else:
@@ -365,48 +371,45 @@ class BmList(APIView):
 
     def get(self, request, format=None):
         viaFilter = request.GET.get("via", None)
+        print(viaFilter)
         statusFilter = request.GET.get("status", None)
         vias = Via.objects.filter(isDeleted=False)
+        response = {
+            "error": {"viaError": []}
+        }
         if (viaFilter):
             vias = vias.filter(id=viaFilter)
-        vias = Via.objects.filter(isDeleted=False)
+
         viasz = ViasSerializer(vias, many=True)
         listVias = viasz.data
-        listBmId = []
         listBm = []
         for via in viasz.data:
-            bmsFromUserId = requests.get(
-                url="https://graph.facebook.com/v8.0/{}/businesses".format(
+            bmsFromUser = requests.get(
+                url="https://graph.facebook.com/v8.0/{}".format(
                     via["fbid"]),
                 params={
+                    "fields": "businesses{id,link,name,permitted_roles,verification_status,payment_account_id,business_users,pending_users}",
                     "access_token": via["accessToken"],
                 })
-            ownerId = via["id"]
-            ownerName = via["name"]
 
-            bmsFromUserId = bmsFromUserId.json()["data"]
-            for bmfromUserId in bmsFromUserId:
-
-                for bm in listBm:
-                    if bm["id"] == bmfromUserId["id"]:
-                        bm["owner"] += [{"id": ownerId, "name": ownerName}]
-                        break
-                else:
-                    bmid = bmfromUserId["id"]
-                    listBmId.append(bmid)
-                    bmInfoRaw = requests.get(
-                        url="https://graph.facebook.com/v8.0/{}".format(bmid),
-                        params={
-                            "fields":
-                            "id,name,link,verification_status,payment_account_id",
-                            "access_token": via["accessToken"]
-                        })
-                    bmInfo = bmInfoRaw.json()
-                    bmInfo["owner"] = [{"id": ownerId, "name": ownerName}]
-                    listBm.append(bmInfo)
-        listBmFilterd = filter(
-            lambda x: (self.filterBmByStatus(statusFilter, x)), listBm)
-        return Response(listBmFilterd)
+            if("error" in bmsFromUser.json()):
+                response["error"]["viaError"].append(via["name"])
+            else:
+                ownerId = via["id"]
+                ownerName = via["name"]
+                bmInfo = filter(
+                    lambda x: (self.filterBmByStatus(statusFilter, x)), bmsFromUser.json()["businesses"]["data"])
+                for business in bmInfo:
+                    for bm in listBm:
+                        if bm["id"] == business["id"]:
+                            bm["owner"] += [{"id": ownerId, "name": ownerName}]
+                            break
+                    else:
+                        business["owner"] = [
+                            {"id": ownerId, "name": ownerName}]
+                        listBm.append(business)
+        response["data"] = listBm
+        return Response(response)
 
     def post(self, request, format=None):
         serializer = BmsSerializer(data=request.data)
