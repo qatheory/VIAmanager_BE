@@ -439,7 +439,7 @@ class CheckVia(APIView):
                     if serializer.is_valid():
                         serializer.save()
                         return Response({"success": True,
-                                         "status": True,
+                                         "status": False,
                                          "messages": "Via {} hiện đã bị hạn chế".format(via["name"])
                                          })
                     return Response({"success": True,
