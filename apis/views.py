@@ -11,6 +11,7 @@ from apis.models import Via, Bm
 from rest_framework.decorators import api_view, permission_classes
 from django.db.models import Q
 import requests
+from datetime import date, datetime
 
 
 class isAdminOrReadOnly(permissions.BasePermission):
@@ -356,6 +357,108 @@ class ViaDetail(APIView):
     #     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class CheckVia(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self, pk):
+        try:
+            return Via.objects.get(pk=pk)
+        except Via.DoesNotExist:
+            return "error"
+
+    def get(self, request, pk, format=None):
+        via = self.get_object(pk)
+        if via == "error":
+            return Response({"success": False,
+                             "messages": "Via Không tồn tại"})
+        viasz = ViasSerializer(via)
+        via = viasz.data
+        BmsFromID = requests.get(
+            url="https://graph.facebook.com/v8.0/{}".format(via["fbid"]),
+            params={
+                "access_token":
+                    via["accessToken"],
+                    "fields": "businesses{id,name,pending_users{created_time}}"
+            })
+
+        #
+        listBusiness = BmsFromID.json()["businesses"]["data"]
+        if len(listBusiness) == 0:
+            return Response({"success": False,
+                             "messages": "Via không hoạt động, user chưa được kết nối với BM"})
+
+        listPendingUsers = listBusiness[0]["pending_users"]["data"]
+
+        if len(listPendingUsers) == 0:
+            today = date.today()
+            formattedDate = today.strftime("%d_%m_%Y")
+            checkingResult = requests.post(
+                url="https://graph.facebook.com/v8.0/{}/business_users".format(
+                    BmsFromID.json()["businesses"]["data"]["id"]),
+                data={
+                    "access_token":
+                    via["accessToken"],
+                    "role": "ADMIN",
+                    "email": "{}@backup.data".format(formattedDate)})
+            if checkingResult.json()["error"]:
+                return Response({"success": False,
+                                 "messages": "Đã có lỗi xảy ra hãy thử kiểm tra lại access token của Via"})
+            serializer = ViasSerializer(via, data={'status': 1})
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"success": True,
+                                 "status": True,
+                                 "messages": "Via {} hiện đang hoạt động".format(via["name"])
+                                 })
+            return Response({"success": True,
+                             "status": True,
+                             "messages": "Via {} hiện đang hoạt động. Tuy nhiên có lỗi khi kết nối với Database".format(via["name"])
+                             })
+
+        else:
+            createdDate = datetime.strptime(
+                listPendingUsers[0]["created_time"], "%Y-%m-%dT%H:%M:%S%z")
+            formattedDate = createdDate.strftime("%d_%m_%Y")
+            selectedPendingUser = listPendingUsers[0]
+            checkingResult = requests.post(
+                url="https://graph.facebook.com/v8.0/{}".format(
+                    selectedPendingUser["id"]),
+                data={
+                    "access_token":
+                    via["accessToken"],
+                    "role": "ADMIN",
+                    "email": "{}@backup.data".format(formattedDate)
+                })
+            if checkingResult.json()["error"]:
+                if checkingResult.json()["error"]["code"] == 368:
+                    serializer = ViasSerializer(via, data={'status': 1})
+                    if serializer.is_valid():
+                        serializer.save()
+                        return Response({"success": True,
+                                         "status": True,
+                                         "messages": "Via {} hiện đã bị hạn chế".format(via["name"])
+                                         })
+                    return Response({"success": True,
+                                     "status": False,
+                                     "messages": "Via {} hiện đã bị hạn chế. Tuy nhiên có lỗi khi kết nối với Database".format(via["name"])
+                                     })
+                return Response({"success": False,
+                                 "messages": "Đã có lỗi xảy ra trong quá trình kết nối với Facebook"})
+            serializer = ViasSerializer(via, data={"status": 1})
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"success": True,
+                                 "status": True,
+                                 "messages": "Via {} hiện đang hoạt động".format(via["name"])
+                                 })
+            return Response({"success": True,
+                             "status": True,
+                             "messages": "Via {} hiện đang hoạt động. Tuy nhiên có lỗi khi kết nối với Database".format(via["name"])
+                             })
+        return Response({"success": False,
+                         "messages": "Lỗi không xác định"})
+
+
 class BmList(APIView):
 
     permission_classes = [permissions.IsAuthenticated]
@@ -371,7 +474,6 @@ class BmList(APIView):
 
     def get(self, request, format=None):
         viaFilter = request.GET.get("via", None)
-        print(viaFilter)
         statusFilter = request.GET.get("status", None)
         vias = Via.objects.filter(isDeleted=False)
         response = {

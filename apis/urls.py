@@ -10,6 +10,7 @@ urlpatterns = [
     # path("workspace/<int:pk>/", views.WorkspaceDetail.as_view()),
     path("vias/", views.ViaList.as_view()),
     path("via/<int:pk>/", views.ViaDetail.as_view()),
+    path("check-via/<int:pk>/", views.CheckVia.as_view()),
     path("bms/", views.BmList.as_view()),
     path("bms/ads_acc/", views.BmAdsAcc.as_view()),
     path("ads_acc/", views.AdsAccList.as_view()),
