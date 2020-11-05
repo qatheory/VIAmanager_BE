@@ -24,7 +24,7 @@ class Via(models.Model):
     gender = models.SmallIntegerField(blank=True, null=True)
     dateOfBirth = models.DateTimeField(blank=True, null=True)
     fbLink = models.TextField(blank=True)
-    status = models.SmallIntegerField(blank=True, default=1)
+    status = models.SmallIntegerField(blank=True, null=True)
     label = models.TextField(blank=True)
     isDeleted = models.BooleanField(default=False)
 

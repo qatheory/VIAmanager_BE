@@ -345,7 +345,9 @@ class ViaDetail(APIView):
 
     def put(self, request, pk, format=None):
         via = self.get_object(pk)
+
         serializer = ViasSerializer(via, data=request.data)
+
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -367,11 +369,12 @@ class CheckVia(APIView):
             return "error"
 
     def get(self, request, pk, format=None):
-        via = self.get_object(pk)
-        if via == "error":
+        viaModel = self.get_object(pk)
+        if viaModel == "error":
             return Response({"success": False,
                              "messages": "Via Không tồn tại"})
-        viasz = ViasSerializer(via)
+        viasz = ViasSerializer(viaModel)
+
         via = viasz.data
         BmsFromID = requests.get(
             url="https://graph.facebook.com/v8.0/{}".format(via["fbid"]),
@@ -403,7 +406,7 @@ class CheckVia(APIView):
             if checkingResult.json()["error"]:
                 return Response({"success": False,
                                  "messages": "Đã có lỗi xảy ra hãy thử kiểm tra lại access token của Via"})
-            serializer = ViasSerializer(via, data={'status': 1})
+            serializer = ViasSerializer(viaModel, data={'status': 1})
             if serializer.is_valid():
                 serializer.save()
                 return Response({"success": True,
@@ -431,7 +434,8 @@ class CheckVia(APIView):
                 })
             if checkingResult.json()["error"]:
                 if checkingResult.json()["error"]["code"] == 368:
-                    serializer = ViasSerializer(via, data={'status': 1})
+                    serializer = ViasSerializer(viaModel, data={'status': 0})
+                    print(serializer.is_valid())
                     if serializer.is_valid():
                         serializer.save()
                         return Response({"success": True,
@@ -444,7 +448,7 @@ class CheckVia(APIView):
                                      })
                 return Response({"success": False,
                                  "messages": "Đã có lỗi xảy ra trong quá trình kết nối với Facebook"})
-            serializer = ViasSerializer(via, data={"status": 1})
+            serializer = ViasSerializer(viaModel, data={"status": 1})
             if serializer.is_valid():
                 serializer.save()
                 return Response({"success": True,
