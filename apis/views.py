@@ -323,11 +323,19 @@ class ViaList(APIView):
         return Response(serializer.data)
 
     def post(self, request, format=None):
-        serializer = ViasSerializer(data=request.data)
+        vias = Via.objects.filter(isDeleted=False, fbid=request.data["fbid"])
+        viasz = ViasSerializer(vias, many=True)
+        print(viasz.data)
+        if len(viasz.data) == 0:
+            serializer = ViasSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"status": "created"})
+        serializer = ViasSerializer(vias[0], data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"status": "updated"})
+        return Response({"status": "error"})
 
 
 class ViaDetail(APIView):
