@@ -9,6 +9,8 @@ from apis.serializers import UserSerializer, UserFullSerializer, UserUpdate, Use
 from apis.serializers import ViasSerializer, BmsSerializer
 from apis.models import Via, Bm
 from rest_framework.decorators import api_view, permission_classes
+import asyncio
+import multiprocessing as mp
 from django.db.models import Q
 import requests
 from datetime import date, datetime
@@ -495,7 +497,6 @@ class BmList(APIView):
     def get(self, request, format=None):
         viaFilter = request.GET.get("via", None)
         statusFilter = request.GET.get("status", None)
-        print(statusFilter)
         vias = Via.objects.filter(isDeleted=False)
         response = {
             "error": {"viaError": []}
@@ -504,8 +505,8 @@ class BmList(APIView):
             vias = vias.filter(id=viaFilter)
 
         viasz = ViasSerializer(vias, many=True)
-        listVias = viasz.data
         listBm = []
+        listVias = viasz.data
         for via in viasz.data:
             bmsFromUser = requests.get(
                 url="https://graph.facebook.com/v8.0/{}".format(
@@ -514,7 +515,7 @@ class BmList(APIView):
                     "fields": "businesses{id,link,name,verification_status,pending_users{id,email,created_time,expiration_time,invite_link}}",
                     "access_token": via["accessToken"],
                 })
-
+            print(via["id"])
             if("error" in bmsFromUser.json()):
                 response["error"]["viaError"].append(via["name"])
             else:
@@ -546,6 +547,17 @@ class BmList(APIView):
 
 class BmBackup(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    isSuccessfulClearBackup = True
+
+    async def clearOldBackupLink(self, backupId, token):
+        deleteBackupResponse = requests.delete(
+            url="https://graph.facebook.com/v8.0/{}".format(backupId),
+            params={
+                "access_token": token
+            })
+        deleteBackupResult = deleteBackupResponse.json()
+        if(deleteBackupResult["success"] == False):
+            isSuccessfulClearBackup = False
 
     def post(self, request, format=None):
         owners = request.data["owners"]
@@ -598,12 +610,24 @@ class BmBackup(APIView):
                     "role": "ADMIN"
             })
         createBackupResult = createBackupResponse.json()
-        print(createBackupResult)
         if("error" in createBackupResult):
+            print(createBackupResult)
             return Response({"success": False, "status": "error", "messages": "Đã có lỗi xảy ra, hãy kiểm tra lại access token"})
         if isSuccessfulClearBackup == False:
             return Response({"success": True, "status": "warning", "messages": "Cấn kiểm tra lại BM, việc dọn sạch link backup cũ xảy ra lỗi"})
-        return Response({"success": True, "status": "success", "messages": "Làm mới link backup thành công"})
+        BackupInfoResponse = requests.get(
+            url="https://graph.facebook.com/v8.0/{}".format(
+                createBackupResult["id"]),
+            params={
+                "access_token":
+                    via["accessToken"],
+                    "fields": "invite_link,expiration_time,email,id",
+            })
+        BackupInfo = BackupInfoResponse.json()
+        data = {"backup_email": BackupInfo["email"],
+                "backup_link": BackupInfo["invite_link"],
+                "expiration_date": BackupInfo["expiration_time"]}
+        return Response({"success": True, "status": "success", "messages": "Làm mới link backup thành công", "data": data})
 
 
 class BmDetail(APIView):
