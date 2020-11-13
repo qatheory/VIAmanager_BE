@@ -13,7 +13,7 @@ class Via(models.Model):
     name = models.CharField(max_length=100, blank=True, default="new Via")
     tfa = models.TextField(blank=True)
     accessToken = models.TextField(blank=True)
-    fbid = models.CharField(max_length=100, blank=True, unique=True)
+    fbid = models.CharField(max_length=100, blank=True)
     password = models.CharField(max_length=100, blank=True)
     email = models.CharField(max_length=100, blank=True)
     emailPassword = models.CharField(max_length=100, blank=True)

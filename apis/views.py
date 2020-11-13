@@ -304,8 +304,10 @@ class ViaList(APIView):
         label = request.GET.get("label", None)
         status = request.GET.get("status", None)
         vias = Via.objects.filter(isDeleted=False)
+        print(viaId)
         if (viaId):
-            vias = vias.filter(id__in=",".join(viaId))
+            vias = vias.filter(id__in=viaId.split(","))
+
         if (name):
             vias = vias.filter(name__contains=name)
         if (fbName):
@@ -325,16 +327,23 @@ class ViaList(APIView):
     def post(self, request, format=None):
         vias = Via.objects.filter(isDeleted=False, fbid=request.data["fbid"])
         viasz = ViasSerializer(vias, many=True)
-        print(viasz.data)
+        print(request.data)
         if len(viasz.data) == 0:
+            print("create via")
             serializer = ViasSerializer(data=request.data)
             if serializer.is_valid():
                 serializer.save()
                 return Response({"status": "created"})
-        serializer = ViasSerializer(vias[0], data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"status": "updated"})
+            else:
+                print("error at create via")
+        else:
+            print("update via")
+            serializer = ViasSerializer(vias[0], data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"status": "updated"})
+            else:
+                print("error at update via")
         return Response({"status": "error"})
 
 
@@ -415,6 +424,18 @@ class CheckVia(APIView):
                     "role": "ADMIN",
                     "email": "{}@backup.data".format(formattedDate)})
             if "error" in checkingResult.json():
+                if checkingResult.json()["error"]["code"] == 100:
+                    serializer = ViasSerializer(viaModel, data={'status': 0})
+                    if serializer.is_valid():
+                        serializer.save()
+                        return Response({"success": True,
+                                         "status": False,
+                                         "messages": "Via {} hiện đã bị hạn chế".format(via["name"])
+                                         })
+                    return Response({"success": True,
+                                     "status": False,
+                                     "messages": "Via {} hiện đã bị hạn chế. Tuy nhiên có lỗi khi kết nối với Database".format(via["name"])
+                                     })
                 return Response({"success": False,
                                  "messages": "Đã có lỗi xảy ra hãy thử kiểm tra lại access token của Via"})
             serializer = ViasSerializer(viaModel, data={'status': 1})
@@ -446,7 +467,6 @@ class CheckVia(APIView):
             if "error" in checkingResult.json():
                 if checkingResult.json()["error"]["code"] == 368:
                     serializer = ViasSerializer(viaModel, data={'status': 0})
-                    print(serializer.is_valid())
                     if serializer.is_valid():
                         serializer.save()
                         return Response({"success": True,
@@ -523,7 +543,6 @@ class BmList(APIView):
                     "fields": "businesses{id,link,name,verification_status,pending_users{id,email,created_time,expiration_time,invite_link}}",
                     "access_token": via["accessToken"],
                 })
-            print(via["id"])
             if("error" in bmsFromUser.json()):
                 response["error"]["viaError"].append(via["name"])
             else:
@@ -535,14 +554,18 @@ class BmList(APIView):
                 for business in bmInfo:
                     for bm in listBm:
                         if bm["id"] == business["id"]:
+                            print("{} = {}".format(bm["id"], business["id"]))
                             bm["owner"] += [{"id": ownerId, "name": ownerName}]
                             break
                     else:
                         business["owner"] = [
                             {"id": ownerId, "name": ownerName}]
                         listBm.append(business)
+
         listBm = map(lambda x: (self.extractBackupEmail(x)), listBm)
+
         response["data"] = listBm
+        print(response["data"])
         return Response(response)
 
     # def post(self, request, format=None):
@@ -618,6 +641,7 @@ class BmBackup(APIView):
                     "role": "ADMIN"
             })
         createBackupResult = createBackupResponse.json()
+
         if("error" in createBackupResult):
             print(createBackupResult)
             return Response({"success": False, "status": "error", "messages": "Đã có lỗi xảy ra, hãy kiểm tra lại access token"})
