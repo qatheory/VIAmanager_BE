@@ -24,7 +24,6 @@ class isAdminOrReadOnly(permissions.BasePermission):
 
     def has_permission(self, request, view):
         user = request.user
-        print(user.is_superuser)
 
         if request.method in permissions.SAFE_METHODS:
             return True
@@ -51,7 +50,6 @@ class UserList(APIView):
         if (username):
 
             users = users.filter(username__contains=username)
-            print(users)
         serializer = UserFullSerializer(users, many=True)
         return Response(serializer.data)
 
@@ -159,7 +157,6 @@ def get_current_user(request):
 #                 "access_token": access_token
 #             })
 #         BMinfo = rawBMinfo.json()
-#         print(BMinfo)
 #         listBMinfo.append(BMinfo)
 #         return Response(listBMinfo)
 
@@ -176,31 +173,27 @@ def get_ads_acc(request):
     vias = Via.objects.all()
     viasz = ViasSerializer(vias, many=True)
     listVias = viasz.data
-    print(viasz.data)
     mergedListAdsAcc = []
     for via, index in viasz.data.items():
-        print(via)
         # adsAccIds = requests.get(
         #     url=f"https://graph.facebook.com/v8.0/{via.fbid}", params={
         #         "access_token": via.accessToken,
         #         "fields": "adaccounts"
         #     })
         # mergedListAdsAcc.append(mergedListAdsAcc.json()["data"])
-    print(mergedListAdsAcc)
-    # mergedListAdsAccountsID = resp.json()["data"]
-    # mergedListAdsAccountsInfo = []
-    # for adsAccount in mergedListAdsAccountsID:
-    #     adsAccountID = adsAccount["id"]
-    #     rawAdsAccountInfo = requests.get(
-    #         url=f"https://graph.facebook.com/v8.0/{adsAccountID}/", params={
-    #             "fields": "name,account_status,amount_spent,balance,disable_reason",
-    #             "access_token": access_token
-    #         })
-    #     adsAccountInfo = rawAdsAccountInfo.json()
-    #     adsAccountInfo["viaID"] = viaID
-    #     adsAccountInfo["via"] = viaName
-    #     print(adsAccountInfo)
-    #     mergedListAdsAccountsInfo.append(adsAccountInfo)
+        # mergedListAdsAccountsID = resp.json()["data"]
+        # mergedListAdsAccountsInfo = []
+        # for adsAccount in mergedListAdsAccountsID:
+        #     adsAccountID = adsAccount["id"]
+        #     rawAdsAccountInfo = requests.get(
+        #         url=f"https://graph.facebook.com/v8.0/{adsAccountID}/", params={
+        #             "fields": "name,account_status,amount_spent,balance,disable_reason",
+        #             "access_token": access_token
+        #         })
+        #     adsAccountInfo = rawAdsAccountInfo.json()
+        #     adsAccountInfo["viaID"] = viaID
+        #     adsAccountInfo["via"] = viaName
+        #     mergedListAdsAccountsInfo.append(adsAccountInfo)
     return Response({
         "success": "true",
         # "data": mergedListAdsAccountsInfo
@@ -304,7 +297,6 @@ class ViaList(APIView):
         label = request.GET.get("label", None)
         status = request.GET.get("status", None)
         vias = Via.objects.filter(isDeleted=False)
-        print(viaId)
         if (viaId):
             vias = vias.filter(id__in=viaId.split(","))
 
@@ -327,23 +319,16 @@ class ViaList(APIView):
     def post(self, request, format=None):
         vias = Via.objects.filter(isDeleted=False, fbid=request.data["fbid"])
         viasz = ViasSerializer(vias, many=True)
-        print(request.data)
         if len(viasz.data) == 0:
-            print("create via")
             serializer = ViasSerializer(data=request.data)
             if serializer.is_valid():
                 serializer.save()
                 return Response({"status": "created"})
-            else:
-                print("error at create via")
         else:
-            print("update via")
             serializer = ViasSerializer(vias[0], data=request.data)
             if serializer.is_valid():
                 serializer.save()
                 return Response({"status": "updated"})
-            else:
-                print("error at update via")
         return Response({"status": "error"})
 
 
@@ -554,7 +539,6 @@ class BmList(APIView):
                 for business in bmInfo:
                     for bm in listBm:
                         if bm["id"] == business["id"]:
-                            print("{} = {}".format(bm["id"], business["id"]))
                             bm["owner"] += [{"id": ownerId, "name": ownerName}]
                             break
                     else:
@@ -565,7 +549,6 @@ class BmList(APIView):
         listBm = map(lambda x: (self.extractBackupEmail(x)), listBm)
 
         response["data"] = listBm
-        print(response["data"])
         return Response(response)
 
     # def post(self, request, format=None):
@@ -593,7 +576,6 @@ class BmBackup(APIView):
     def post(self, request, format=None):
         owners = request.data["owners"]
         bmid = request.data["bmid"]
-        # print("{} {}".format(owners, bmid))
         if(not owners):
             return Response({"success": False, "status": "error", "messages": "Chưa cung cấp via"})
         if len(owners) == 0:
@@ -608,7 +590,6 @@ class BmBackup(APIView):
         viasz = ViasSerializer(vias, many=True)
         if len(viasz.data) == 0:
             return Response({"success": False, "messages": "BM Không được sở hữu bởi Via còn hoạt động"})
-        # print(viasz.data[0]["id"])
         via = viasz.data[0]
         listPendingUsersResponse = requests.get(
             url="https://graph.facebook.com/v8.0/{}/pending_users".format(
@@ -628,7 +609,6 @@ class BmBackup(APIView):
             deleteBackupResult = deleteBackupResponse.json()
             if(deleteBackupResult["success"] == False):
                 isSuccessfulClearBackup = False
-        print(isSuccessfulClearBackup)
         today = date.today()
         formattedDate = today.strftime("%d_%m_%Y")
         createBackupResponse = requests.post(
@@ -643,7 +623,6 @@ class BmBackup(APIView):
         createBackupResult = createBackupResponse.json()
 
         if("error" in createBackupResult):
-            print(createBackupResult)
             return Response({"success": False, "status": "error", "messages": "Đã có lỗi xảy ra, hãy kiểm tra lại access token"})
         if isSuccessfulClearBackup == False:
             return Response({"success": True, "status": "warning", "messages": "Cấn kiểm tra lại BM, việc dọn sạch link backup cũ xảy ra lỗi"})
