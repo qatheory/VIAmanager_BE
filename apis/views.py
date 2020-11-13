@@ -167,37 +167,37 @@ def get_current_user(request):
 #         raise Http404
 
 
-@api_view(["GET"])
-@permission_classes([permissions.IsAuthenticated])
-def get_ads_acc(request):
-    vias = Via.objects.all()
-    viasz = ViasSerializer(vias, many=True)
-    listVias = viasz.data
-    mergedListAdsAcc = []
-    for via, index in viasz.data.items():
-        # adsAccIds = requests.get(
-        #     url=f"https://graph.facebook.com/v8.0/{via.fbid}", params={
-        #         "access_token": via.accessToken,
-        #         "fields": "adaccounts"
-        #     })
-        # mergedListAdsAcc.append(mergedListAdsAcc.json()["data"])
-        # mergedListAdsAccountsID = resp.json()["data"]
-        # mergedListAdsAccountsInfo = []
-        # for adsAccount in mergedListAdsAccountsID:
-        #     adsAccountID = adsAccount["id"]
-        #     rawAdsAccountInfo = requests.get(
-        #         url=f"https://graph.facebook.com/v8.0/{adsAccountID}/", params={
-        #             "fields": "name,account_status,amount_spent,balance,disable_reason",
-        #             "access_token": access_token
-        #         })
-        #     adsAccountInfo = rawAdsAccountInfo.json()
-        #     adsAccountInfo["viaID"] = viaID
-        #     adsAccountInfo["via"] = viaName
-        #     mergedListAdsAccountsInfo.append(adsAccountInfo)
-    return Response({
-        "success": "true",
-        # "data": mergedListAdsAccountsInfo
-    })
+# @api_view(["GET"])
+# @permission_classes([permissions.IsAuthenticated])
+# def get_ads_acc(request):
+#     vias = Via.objects.all()
+#     viasz = ViasSerializer(vias, many=True)
+#     listVias = viasz.data
+#     mergedListAdsAcc = []
+#     for via, index in viasz.data.items():
+#         # adsAccIds = requests.get(
+#         #     url=f"https://graph.facebook.com/v8.0/{via.fbid}", params={
+#         #         "access_token": via.accessToken,
+#         #         "fields": "adaccounts"
+#         #     })
+#         # mergedListAdsAcc.append(mergedListAdsAcc.json()["data"])
+#         # mergedListAdsAccountsID = resp.json()["data"]
+#         # mergedListAdsAccountsInfo = []
+#         # for adsAccount in mergedListAdsAccountsID:
+#         #     adsAccountID = adsAccount["id"]
+#         #     rawAdsAccountInfo = requests.get(
+#         #         url=f"https://graph.facebook.com/v8.0/{adsAccountID}/", params={
+#         #             "fields": "name,account_status,amount_spent,balance,disable_reason",
+#         #             "access_token": access_token
+#         #         })
+#         #     adsAccountInfo = rawAdsAccountInfo.json()
+#         #     adsAccountInfo["viaID"] = viaID
+#         #     adsAccountInfo["via"] = viaName
+#         #     mergedListAdsAccountsInfo.append(adsAccountInfo)
+#         return Response({
+#             "success": "true",
+#             # "data": mergedListAdsAccountsInfo
+#         })
 
 
 # VIA APIViews
