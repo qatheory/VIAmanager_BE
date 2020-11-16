@@ -37,31 +37,8 @@ class Via(models.Model):
 
 
 class Bm(models.Model):
-    createdDate = models.DateTimeField(auto_now_add=True)
-    name = models.CharField(max_length=100, blank=True, default="new Via")
-    BmID = models.CharField(max_length=100, blank=True)
-    balance = models.FloatField(blank=True)
+    # createdDate = models.DateTimeField(auto_now_add=True)
+    # name = models.CharField(max_length=100, blank=True, default="new Via")
+    bmid = models.CharField(max_length=100, blank=True)
+    # balance = models.FloatField(blank=True)
     status = models.SmallIntegerField(blank=True, default=1)
-
-    # workspace = models.ForeignKey("apis.Workspace",
-    #                               related_name="bms",
-    #                               on_delete=models.CASCADE)
-
-    class Meta:
-        ordering = ["createdDate"]
-
-
-# class Workspace(models.Model):
-#     createdDate = models.DateTimeField(auto_now_add=True)
-#     name = models.CharField(max_length=100,
-#                             blank=True,
-#                             default="new Workspace")
-#     accessToken = models.CharField(max_length=200,
-#                                    blank=True,
-#                                    )
-#     createdBy = models.ForeignKey("auth.User",
-#                                   related_name="workspaces",
-#                                   on_delete=models.CASCADE)
-
-#     class Meta:
-#         ordering = ["createdDate"]

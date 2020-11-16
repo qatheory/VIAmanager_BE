@@ -9,8 +9,6 @@ from apis.serializers import UserSerializer, UserFullSerializer, UserUpdate, Use
 from apis.serializers import ViasSerializer, BmsSerializer
 from apis.models import Via, Bm
 from rest_framework.decorators import api_view, permission_classes
-import asyncio
-import multiprocessing as mp
 from django.db.models import Q
 import requests
 from datetime import date, datetime
@@ -39,6 +37,11 @@ class isAdminOrReadOnly(permissions.BasePermission):
 
 
 # User APIView
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def get_current_user(request):
+    serializer = UserFullSerializer(request.user)
+    return Response(serializer.data)
 
 
 class UserList(APIView):
@@ -129,76 +132,6 @@ class CreateUserView(APIView):
             "response": "success",
             "message": "user created succesfully"
         })
-
-
-@api_view(["GET"])
-@permission_classes([permissions.IsAuthenticated])
-def get_current_user(request):
-    serializer = UserFullSerializer(request.user)
-    return Response(serializer.data)
-
-
-# @api_view(["GET"])
-# @permission_classes([permissions.IsAuthenticated])
-# def get_bm(request):
-#     userID = serializer.data["appID"]
-#     access_token = serializer.data["accessToken"]
-#     resp = requests.get(
-#         url=f"https://graph.facebook.com/v8.0/{userID}/businesses", params={
-#             "access_token": access_token
-#         })
-#     listBMid = resp.json()["data"]
-#     listBMinfo = []
-#     for bm in listBMid:
-#         bmid = bm["id"]
-#         rawBMinfo = requests.get(
-#             url=f"https://graph.facebook.com/v8.0/{bmid}", params={
-#                 "fields": "id,name,link,verification_status,payment_account_id",
-#                 "access_token": access_token
-#             })
-#         BMinfo = rawBMinfo.json()
-#         listBMinfo.append(BMinfo)
-#         return Response(listBMinfo)
-
-# def get_workspace_from_id(workspaceID):
-#     try:
-#         return Workspace.objects.get(pk=workspaceID)
-#     except Workspace.DoesNotExist:
-#         raise Http404
-
-
-# @api_view(["GET"])
-# @permission_classes([permissions.IsAuthenticated])
-# def get_ads_acc(request):
-#     vias = Via.objects.all()
-#     viasz = ViasSerializer(vias, many=True)
-#     listVias = viasz.data
-#     mergedListAdsAcc = []
-#     for via, index in viasz.data.items():
-#         # adsAccIds = requests.get(
-#         #     url=f"https://graph.facebook.com/v8.0/{via.fbid}", params={
-#         #         "access_token": via.accessToken,
-#         #         "fields": "adaccounts"
-#         #     })
-#         # mergedListAdsAcc.append(mergedListAdsAcc.json()["data"])
-#         # mergedListAdsAccountsID = resp.json()["data"]
-#         # mergedListAdsAccountsInfo = []
-#         # for adsAccount in mergedListAdsAccountsID:
-#         #     adsAccountID = adsAccount["id"]
-#         #     rawAdsAccountInfo = requests.get(
-#         #         url=f"https://graph.facebook.com/v8.0/{adsAccountID}/", params={
-#         #             "fields": "name,account_status,amount_spent,balance,disable_reason",
-#         #             "access_token": access_token
-#         #         })
-#         #     adsAccountInfo = rawAdsAccountInfo.json()
-#         #     adsAccountInfo["viaID"] = viaID
-#         #     adsAccountInfo["via"] = viaName
-#         #     mergedListAdsAccountsInfo.append(adsAccountInfo)
-#         return Response({
-#             "success": "true",
-#             # "data": mergedListAdsAccountsInfo
-#         })
-
 
 # VIA APIViews
 
@@ -299,7 +232,6 @@ class ViaList(APIView):
         vias = Via.objects.filter(isDeleted=False)
         if (viaId):
             vias = vias.filter(id__in=viaId.split(","))
-
         if (name):
             vias = vias.filter(name__contains=name)
         if (fbName):
@@ -388,7 +320,18 @@ class CheckVia(APIView):
                     "fields": "businesses{id,name,pending_users{created_time}}"
             })
 
-        #
+        if "error" in BmsFromID.json():
+            if BmsFromID.json()["error"]["code"] == 190:
+                serializer = ViasSerializer(viaModel, data={'status': None})
+                if serializer.is_valid():
+                    serializer.save()
+                return Response({"success": False,
+                                 "status": "undefined",
+                                 "messages": "Via {} Đã được thay đổi mật khẩu nên access token không còn hiệu lực, hãy cập nhật lại".format(via["name"])
+                                 })
+            return Response({"success": False,
+                             "messages": "Via {} Xảy ra lỗi không xác định".format(via["name"])
+                             })
         listBusiness = BmsFromID.json()["businesses"]["data"]
         if len(listBusiness) == 0:
             return Response({"success": False,
@@ -409,7 +352,7 @@ class CheckVia(APIView):
                     "role": "ADMIN",
                     "email": "{}@backup.data".format(formattedDate)})
             if "error" in checkingResult.json():
-                if checkingResult.json()["error"]["code"] == 100:
+                if checkingResult.json()["error"]["code"] == 368 or checkingResult.json()["error"]["code"] == 100:
                     serializer = ViasSerializer(viaModel, data={'status': 0})
                     if serializer.is_valid():
                         serializer.save()
@@ -483,7 +426,23 @@ class BmList(APIView):
 
     permission_classes = [permissions.IsAuthenticated]
 
-    def filterBmByStatus(self, statusFilter, bm):
+    def getBmById(self, bmid):
+        try:
+            return Bm.objects.get(bmid=bmid)
+        except Bm.DoesNotExist:
+            return None
+
+    def getBmStatus(self, bm):
+        bmObject = self.getBmById(bm["id"])
+        if bmObject == None:
+            bm["status"] = None
+            return bm
+        bmsz = BmsSerializer(bmObject)
+        bmInfo = bmsz.data
+        bm["status"] = bmInfo["status"]
+        return bm
+
+    def filterByVerificationStatus(self, statusFilter, bm):
         if (statusFilter != "0" and statusFilter != None):
             if (statusFilter == "1"):
                 return (bm["verification_status"] != "not_verified")
@@ -533,21 +492,23 @@ class BmList(APIView):
             else:
                 ownerId = via["id"]
                 ownerName = via["name"]
+                ownerStatus = via["status"]
                 # bmInfo = bmsFromUser.json()["businesses"]["data"]
                 bmInfo = filter(
-                    lambda x: (self.filterBmByStatus(statusFilter, x)), bmsFromUser.json()["businesses"]["data"])
+                    lambda x: (self.filterByVerificationStatus(statusFilter, x)), bmsFromUser.json()["businesses"]["data"])
                 for business in bmInfo:
                     for bm in listBm:
                         if bm["id"] == business["id"]:
-                            bm["owner"] += [{"id": ownerId, "name": ownerName}]
+                            bm["owner"] += [{"id": ownerId,
+                                             "name": ownerName, "status": ownerStatus}]
                             break
                     else:
                         business["owner"] = [
-                            {"id": ownerId, "name": ownerName}]
+                            {"id": ownerId, "name": ownerName, "status": ownerStatus}]
                         listBm.append(business)
 
         listBm = map(lambda x: (self.extractBackupEmail(x)), listBm)
-
+        listBm = map(lambda x: (self.getBmStatus(x)), listBm)
         response["data"] = listBm
         return Response(response)
 
@@ -559,11 +520,90 @@ class BmList(APIView):
     #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class BmBackup(APIView):
+class CheckBm(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, format=None):
+        bmid = request.data["bmid"]
+        viaFbIds = request.data["viaFbId"]
+        print(viaFbIds)
+        if bmid == None:
+            return Response({"success": False, "message": "Hãy kiểm tra lại id của BM"})
+        if viaFbIds == None:
+            return Response({"success": False, "message": "Hãy cung cấp fbid của Via sở hữu bm"})
+        vias = Via.objects.filter(
+            isDeleted=False, id__in=viaFbIds.split(","))
+        viasz = ViasSerializer(vias, many=True)
+        print(viasz.data)
+        notWorkingVias = []
+        checkedVias = []
+        isBmChecked = False
+        updateBmStatus = "undefined"
+        errorMessage = "no errors"
+        for via in viasz.data:
+            print("here")
+            if via["status"] == 0 or via["status"] == None or via["status"] == "":
+                continue
+            createAdAccountResult = requests.post(
+                url="https://graph.facebook.com/v9.0/{}/adaccount".format(
+                    bmid),
+                data={
+                    "access_token": via["accessToken"],
+                    "currency": "VND",
+                    "end_advertiser": "NONE",
+                    "media_agency": "NONE",
+                    "partner": "NONE",
+                    "name": "checkBusinessStatus",
+                    "timezone_id": 132
+                })
+            print(createAdAccountResult.json())
+            if "error" in createAdAccountResult.json():
+                print(createAdAccountResult.json())
+                if createAdAccountResult.json()["error"]["code"] == 368 or createAdAccountResult.json()["error"]["code"] == 100:
+                    notWorkingVias.append(
+                        {"viaId": via["id"], "name": via["name"]})
+                    viaModel = Via.objects.filter(
+                        isDeleted=False, fbid=via["fbid"])
+                    serializer = ViasSerializer(
+                        viaModel, data={'status': 0})
+                    if serializer.is_valid():
+                        serializer.save()
+                        continue
+                    errorMessage = "Đã có lỗi xảy ra trong quá trình kết nối với Database"
+                    continue
+                return Response({"success": False, "message": "Đã có lỗi xảy ra trong quá trình kết nối với facebook. error code: {}".format(
+                    createAdAccountResult.json()["error"]["code"])})
+
+            isBmChecked = True
+            bms = Bm.objects.filter(bmid=bmid)
+            bmsz = BmsSerializer(bms, many=True)
+            if len(bmsz.data) == 0:
+                serializer = BmsSerializer(data={"bmid": bmid, "status": 1})
+                updateBmStatus = "created"
+                if serializer.is_valid():
+                    serializer.save()
+                    break
+                errorMessage = "Đã có lỗi xảy ra trong quá trình kết nối với Database"
+                break
+            else:
+                serializer = BmsSerializer(bms[0], data={"status": 1})
+                updateBmStatus = "updated"
+                if serializer.is_valid():
+                    serializer.save()
+                    break
+                errorMessage = "Đã có lỗi xảy ra trong quá trình kết nối với Database"
+                break
+
+        if isBmChecked == True:
+            return Response({"success": True, "status": updateBmStatus, "message": errorMessage})
+        return Response({"success": True, "status": "failed", "listErrorVias": notWorkingVias, "message": errorMessage})
+
+
+class BackupBm(APIView):
     permission_classes = [permissions.IsAuthenticated]
     isSuccessfulClearBackup = True
 
-    async def clearOldBackupLink(self, backupId, token):
+    def clearOldBackupLink(self, backupId, token):
         deleteBackupResponse = requests.delete(
             url="https://graph.facebook.com/v8.0/{}".format(backupId),
             params={
