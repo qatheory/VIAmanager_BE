@@ -38,7 +38,7 @@ class Via(models.Model):
 
 class Bm(models.Model):
     # createdDate = models.DateTimeField(auto_now_add=True)
-    # name = models.CharField(max_length=100, blank=True, default="new Via")
+    # name = models.CharField(max_length=100, blank=True)
     bmid = models.CharField(max_length=100, blank=True)
     # balance = models.FloatField(blank=True)
-    status = models.SmallIntegerField(blank=True, default=1)
+    status = models.SmallIntegerField(blank=True, null=True)

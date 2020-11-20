@@ -535,31 +535,46 @@ class CheckBm(APIView):
             isDeleted=False, id__in=viaFbIds.split(","))
         viasz = ViasSerializer(vias, many=True)
         print(viasz.data)
+
         notWorkingVias = []
         checkedVias = []
+        bmStatus = 1
         isBmChecked = False
         updateBmStatus = "undefined"
-        errorMessage = "no errors"
+        errorMessage = "Đã có lỗi xảy ra"
+        errorLogs = []
         for via in viasz.data:
             print("here")
             if via["status"] == 0 or via["status"] == None or via["status"] == "":
                 continue
-            createAdAccountResult = requests.post(
-                url="https://graph.facebook.com/v9.0/{}/adaccount".format(
+            getAdAccountsFromBmResult = requests.get(
+                url="https://graph.facebook.com/v9.0/{}/owned_ad_accounts".format(
                     bmid),
+                params={
+                    "access_token": via["accessToken"],
+                    "fields": "name,is_notifications_enabled",
+                })
+            if "error" in getAdAccountsFromBmResult.json():
+                error = {"via": via["id"],
+                         "message": getAdAccountsFromBmResult.json()["error"]["code"],
+                         "code": getAdAccountsFromBmResult.json()["error"]["message"]}
+                errorLogs.append(error)
+                continue
+            adAccountsFromBm = getAdAccountsFromBmResult.json()["data"]
+            if len(adAccountsFromBm) == 0:
+                return Response({"success": False, "message": "BM hiện tại không sở hữu tài khoản quảng cáo, hãy tạo tài khoản quảng cáo trước khi kiểm tra BM"})
+            adAccountId = adAccountsFromBm[0]["id"]
+            print(adAccountId)
+            updateAdAccoutResult = requests.post(
+                url="https://graph.facebook.com/v9.0/{}".format(adAccountId),
                 data={
                     "access_token": via["accessToken"],
-                    "currency": "VND",
-                    "end_advertiser": "NONE",
-                    "media_agency": "NONE",
-                    "partner": "NONE",
-                    "name": "checkBusinessStatus",
-                    "timezone_id": 132
+                    "is_notifications_enabled": "true",
                 })
-            print(createAdAccountResult.json())
-            if "error" in createAdAccountResult.json():
-                print(createAdAccountResult.json())
-                if createAdAccountResult.json()["error"]["code"] == 368 or createAdAccountResult.json()["error"]["code"] == 100:
+            print(adAccountId)
+            if "error" in updateAdAccoutResult.json():
+                print(updateAdAccoutResult.json())
+                if updateAdAccoutResult.json()["error"]["code"] == 368 or updateAdAccoutResult.json()["error"]["code"] == 100:
                     notWorkingVias.append(
                         {"viaId": via["id"], "name": via["name"]})
                     viaModel = Via.objects.filter(
@@ -569,34 +584,52 @@ class CheckBm(APIView):
                     if serializer.is_valid():
                         serializer.save()
                         continue
-                    errorMessage = "Đã có lỗi xảy ra trong quá trình kết nối với Database"
+                    error = {via: via["id"],
+                             message: "Đã có lỗi xảy ra trong quá trình kết nối với Database"}
+                    errorLogs.append(error)
                     continue
-                return Response({"success": False, "message": "Đã có lỗi xảy ra trong quá trình kết nối với facebook. error code: {}".format(
-                    createAdAccountResult.json()["error"]["code"])})
-
+                elif updateAdAccoutResult.json()["error"]["code"] == 200 and updateAdAccoutResult.json()["error"]["error_subcode"] == 1815066:
+                    bmStatus = 0
+                    print("checked")
+                else:
+                    return Response({
+                        "success": False,
+                        "message": "Đã có lỗi xảy ra trong quá trình kết nối với facebook với via {}. error code: {}".format(via["name"],
+                                                                                                                             updateAdAccoutResult.json()["error"]["code"])
+                    })
             isBmChecked = True
             bms = Bm.objects.filter(bmid=bmid)
             bmsz = BmsSerializer(bms, many=True)
+            errorMessage = None
             if len(bmsz.data) == 0:
-                serializer = BmsSerializer(data={"bmid": bmid, "status": 1})
+                serializer = BmsSerializer(
+                    data={"bmid": bmid, "status": bmStatus})
                 updateBmStatus = "created"
                 if serializer.is_valid():
                     serializer.save()
                     break
-                errorMessage = "Đã có lỗi xảy ra trong quá trình kết nối với Database"
+                error = {"via": via["id"],
+                         "message": "Đã có lỗi xảy ra trong quá trình kết nối với Database"}
+                errorLogs.append(error)
                 break
             else:
-                serializer = BmsSerializer(bms[0], data={"status": 1})
+                serializer = BmsSerializer(
+                    bms[0], data={"status": bmStatus})
                 updateBmStatus = "updated"
                 if serializer.is_valid():
                     serializer.save()
                     break
-                errorMessage = "Đã có lỗi xảy ra trong quá trình kết nối với Database"
+                error = {"via": via["id"],
+                         "message": "Đã có lỗi xảy ra trong quá trình kết nối với Database"}
+                errorLogs.append(error)
                 break
-
+        print(bmStatus)
         if isBmChecked == True:
-            return Response({"success": True, "status": updateBmStatus, "message": errorMessage})
-        return Response({"success": True, "status": "failed", "listErrorVias": notWorkingVias, "message": errorMessage})
+            successMessage = "BM không bị giới hạn"
+            if bmStatus == 0:
+                successMessage = "BM đã bị giới hạn"
+            return Response({"success": True, "status": bmStatus, "message": successMessage, "errors": errorLogs})
+        return Response({"success": False, "message": errorMessage, "errors": errorLogs})
 
 
 class BackupBm(APIView):

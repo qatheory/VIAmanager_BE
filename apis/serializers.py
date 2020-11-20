@@ -20,7 +20,7 @@ class ViasSerializer(serializers.ModelSerializer):
 class BmsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bm
-        fields = ["id", "name", "accessToken", "appID", "createdDate"]
+        fields = ["id", "bmid", "status"]
 
 
 # class WorkspaceSerializer(serializers.ModelSerializer):
