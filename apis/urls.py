@@ -13,6 +13,7 @@ urlpatterns = [
     path("check-via/<int:pk>/", views.CheckVia.as_view()),
     path("bm-backup/", views.BackupBm.as_view()),
     path("bm-check/", views.CheckBm.as_view()),
+    path("bm-check-all/", views.CheckAllBm.as_view()),
     path("bms/", views.BmList.as_view()),
     path("bms/ads_acc/", views.BmAdsAcc.as_view()),
     path("ads_acc/", views.AdsAccList.as_view()),

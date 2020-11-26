@@ -42,3 +42,8 @@ class Bm(models.Model):
     bmid = models.CharField(max_length=100, blank=True)
     # balance = models.FloatField(blank=True)
     status = models.SmallIntegerField(blank=True, null=True)
+
+
+class Process(models.Model):
+    name = models.CharField(max_length=100, blank=True)
+    status = models.SmallIntegerField(blank=True, default=0)

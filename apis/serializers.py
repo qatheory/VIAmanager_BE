@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from apis.models import Via, Bm, Profile
+from apis.models import Via, Bm, Profile, Process
 from rest_framework_jwt.settings import api_settings
 import requests
 
@@ -139,3 +139,9 @@ class UserFullSerializer(serializers.ModelSerializer):
         model = User
         fields = ["id", "username", "first_name",
                   "last_name",  "profile"]
+
+
+class ProcessSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Process
+        fields = ["id", "name", "status"]
