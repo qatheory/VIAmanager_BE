@@ -1,8 +1,7 @@
-from apis.serializers import ViasSerializer, BmsSerializer
-from apis.models import Via, Bm
+from apis.serializers import ViasSerializer, BmsSerializer, ProcessSerializer
+from apis.models import Via, Bm, Process
+from datetime import date, datetime
 import requests
-
-checkAllBmStatus = False
 
 
 def setCheckingProgress(status):
@@ -23,7 +22,7 @@ def getBmById(bmid):
 def getBmStatus(bm):
     bmObject = getBmById(bm["id"])
     if bmObject == None:
-        bm["status"] = None
+        bm["status"] = 2
         return bm
     bmsz = BmsSerializer(bmObject)
     bmInfo = bmsz.data
@@ -42,12 +41,15 @@ def filterByVerificationStatus(verificationStatusFilter, bm):
 
 
 def filterByStatus(statusFilter, bm):
-    if (statusFilter != "2" and statusFilter != None):
+    if (statusFilter != "3" and statusFilter != None):
         if (statusFilter == "1"):
             return (bm["status"] == 1)
         elif (statusFilter == "0"):
             return (bm["status"] == 0)
+        elif (statusFilter == "2"):
+            return (bm["status"] == 2)
     else:
+
         return True
 
 
@@ -68,9 +70,12 @@ def extractBackupEmail(bm):
 
 
 def getListBm(request):
-    viaFilter = request.GET.get("via", None)
-    # verificationStatusFilter = request.GET.get("verificationStatus", None)
-    statusFilter = request.GET.get("status", None)
+    viaFilter = None
+    statusFilter = None
+    if request != None:
+        viaFilter = request.GET.get("via", None)
+        # verificationStatusFilter = request.GET.get("verificationStatus", None)
+        statusFilter = request.GET.get("status", None)
     vias = Via.objects.filter(isDeleted=False)
     response = {
         "error": {"viaError": []}
@@ -112,10 +117,34 @@ def getListBm(request):
 
     listBm = map(lambda x: (extractBackupEmail(x)), listBm)
     listBm = map(lambda x: (getBmStatus(x)), listBm)
-    listBm = list(
-        map(lambda x: (filterByStatus(statusFilter, x)), listBm))
+    listBm = filter(lambda x: (filterByStatus(statusFilter, x)), listBm)
     response["data"] = listBm
     return (response)
+
+
+def saveBmStatus(bmid, via, bmStatus):
+    bms = Bm.objects.filter(bmid=bmid)
+    bmsz = BmsSerializer(bms, many=True)
+
+    if len(bmsz.data) == 0:
+        serializer = BmsSerializer(
+            data={"bmid": bmid, "status": bmStatus})
+        updateBmStatus = "created"
+        if serializer.is_valid():
+            serializer.save()
+            return {"via": via["id"],
+                    "message": "Đã có lỗi xảy ra trong quá trình kết nối với Database"}
+        return True
+    else:
+        serializer = BmsSerializer(
+            bms[0], data={"status": bmStatus})
+        updateBmStatus = "updated"
+        if serializer.is_valid():
+            serializer.save()
+            return {"via": via["id"],
+                    "message": "Đã có lỗi xảy ra trong quá trình kết nối với Database"}
+        errorLogs.append(error)
+        return True
 
 
 def checkBm(bmid, viaFbIds):
@@ -153,6 +182,7 @@ def checkBm(bmid, viaFbIds):
             continue
         adAccountsFromBm = getAdAccountsFromBmResult.json()["data"]
         if len(adAccountsFromBm) == 0:
+            saveBmStatusResult = saveBmStatus(bmid, via, 2)
             return ({"success": False, "message": "BM hiện tại không sở hữu tài khoản quảng cáo, hãy tạo tài khoản quảng cáo trước khi kiểm tra BM"})
         adAccountId = adAccountsFromBm[0]["id"]
         updateAdAccoutResult = requests.post(
@@ -181,6 +211,7 @@ def checkBm(bmid, viaFbIds):
                 bmStatus = 0
                 print("checked")
             else:
+                saveBmStatusResult = saveBmStatus(bmid, via, 2)
                 return ({
                     "success": False,
                     "message": "Đã có lỗi xảy ra trong quá trình kết nối với facebook với via {}. error code: {}".format(via["name"],
@@ -188,31 +219,10 @@ def checkBm(bmid, viaFbIds):
                 })
         viasLimited = False
         isBmChecked = True
-        bms = Bm.objects.filter(bmid=bmid)
-        bmsz = BmsSerializer(bms, many=True)
         errorMessage = None
-        if len(bmsz.data) == 0:
-            serializer = BmsSerializer(
-                data={"bmid": bmid, "status": bmStatus})
-            updateBmStatus = "created"
-            if serializer.is_valid():
-                serializer.save()
-                break
-            error = {"via": via["id"],
-                     "message": "Đã có lỗi xảy ra trong quá trình kết nối với Database"}
-            errorLogs.append(error)
-            break
-        else:
-            serializer = BmsSerializer(
-                bms[0], data={"status": bmStatus})
-            updateBmStatus = "updated"
-            if serializer.is_valid():
-                serializer.save()
-                break
-            error = {"via": via["id"],
-                     "message": "Đã có lỗi xảy ra trong quá trình kết nối với Database"}
-            errorLogs.append(error)
-            break
+        saveBmStatusResult = saveBmStatus(bmid, via, bmStatus)
+        if saveBmStatusResult != True:
+            errorLogs.append(saveBmStatusResult)
     if isBmChecked == True:
         successMessage = "BM không bị giới hạn"
         if bmStatus == 0:
@@ -223,3 +233,138 @@ def checkBm(bmid, viaFbIds):
     if viasLimited == True:
         return ({"success": False, "message": "Tất cả VIA sở hữu BM này đều đã bị hạn chế, hãy kiểm tra lại access token của VIA", "errors": errorLogs})
     return ({"success": False, "message": errorMessage, "errors": errorLogs})
+
+
+def backupBm(owners, bmid):
+    if(not owners):
+        return ({"success": False, "status": "error", "messages": "Chưa cung cấp via"})
+    if len(owners) == 0:
+        return ({"success": False, "status": "error", "messages": "Chưa cung cấp via"})
+    if(not bmid):
+        return ({"success": False, "status": "error", "messages": "Chưa cung cấp bm"})
+    listViasId = []
+    for owner in owners:
+        listViasId.append(owner["id"])
+    vias = Via.objects.filter(id__in=listViasId)
+    vias = vias.filter(status=1)
+    viasz = ViasSerializer(vias, many=True)
+    if len(viasz.data) == 0:
+        return ({"success": False, "messages": "BM Không được sở hữu bởi Via còn hoạt động"})
+    via = viasz.data[0]
+    listPendingUsersResponse = requests.get(
+        url="https://graph.facebook.com/v8.0/{}/pending_users".format(
+            bmid),
+        params={
+            "access_token": via["accessToken"]
+        })
+    listPendingUsers = listPendingUsersResponse.json()["data"]
+    isSuccessfulClearBackup = True
+    for pendingUsers in listPendingUsers:
+        deleteBackupResponse = requests.delete(
+            url="https://graph.facebook.com/v8.0/{}".format(
+                pendingUsers["id"]),
+            params={
+                "access_token": via["accessToken"]
+            })
+        deleteBackupResult = deleteBackupResponse.json()
+        if(deleteBackupResult["success"] == False):
+            isSuccessfulClearBackup = False
+    today = date.today()
+    formattedDate = today.strftime("%d_%m_%Y")
+    createBackupResponse = requests.post(
+        url="https://graph.facebook.com/v8.0/{}/business_users".format(
+            bmid),
+        data={
+            "access_token":
+                via["accessToken"],
+                "email": "{}@backup.data".format(formattedDate),
+                "role": "ADMIN"
+        })
+    createBackupResult = createBackupResponse.json()
+
+    if("error" in createBackupResult):
+        return ({"success": False, "status": "error", "messages": "Đã có lỗi xảy ra, hãy kiểm tra lại access token"})
+    if isSuccessfulClearBackup == False:
+        return ({"success": True, "status": "warning", "messages": "Cấn kiểm tra lại BM, việc dọn sạch link backup cũ xảy ra lỗi"})
+    BackupInfoResponse = requests.get(
+        url="https://graph.facebook.com/v8.0/{}".format(
+            createBackupResult["id"]),
+        params={
+            "access_token":
+                via["accessToken"],
+                "fields": "invite_link,expiration_time,email,id",
+        })
+    BackupInfo = BackupInfoResponse.json()
+    data = {"backup_email": BackupInfo["email"],
+            "backup_link": BackupInfo["invite_link"],
+            "expiration_date": BackupInfo["expiration_time"]}
+    return ({"success": True, "status": "success", "messages": "Làm mới link backup thành công", "data": data})
+
+
+def checkBmProcess():
+    checkAllBmProcess = Process.objects.filter(name="checkAllBm")
+    checkAllBmProcessSz = ProcessSerializer(checkAllBmProcess, many=True)
+    print(checkAllBmProcessSz.data[0]["status"])
+    if checkAllBmProcessSz.data == []:
+        serializer = ProcessSerializer(
+            data={"name": "checkAllBm", "status": 1})
+        if serializer.is_valid():
+            serializer.save()
+            return {"success": True, "process": False}
+        else:
+            return {"success": False, "process": False}
+    if checkAllBmProcessSz.data[0]["status"] == 0:
+        serializer = ProcessSerializer(checkAllBmProcess[0],
+                                       data={"name": "checkAllBm", "status": 1})
+        if serializer.is_valid():
+            serializer.save()
+            return {"success": True, "process": False}
+        else:
+            return {"success": False, "process": False}
+    return {"success": True, "process": True}
+
+# def get(self, request, format=None):
+    #     checkAllBmProcess = Process.objects.filter(name="checkAllBm")
+    #     serializer = ProcessSerializer(checkAllBmProcess[0],
+    #                                    data={"name": "checkAllBm", "status": 0})
+    #     if serializer.is_valid():
+    #         serializer.save()
+    #         return Response({"success": True, "process": False})
+    #     return Response({"success": False, "process": False})
+
+
+def checkAllBms(force):
+    if force == False:
+        checkProcess = checkBmProcess()
+        if checkProcess["success"] == False:
+            return ({"success": False, "status": False, "message": "đã có lỗi xảy ra với hệ thống"})
+        if checkProcess["process"] == True:
+            return ({"success": True, "status": False, "message": "Quá trình kiểm tra toàn bộ BM đang diễn ra"})
+    getListBmResponse = getListBm(None)
+    BmList = getListBmResponse["data"]
+    checkBmResponseList = []
+    for bm in BmList:
+        bmid = bm["id"]
+        viaFbIds = list(map(lambda owner: owner["id"], bm["owner"]))
+        checkBmResponse = checkBm(bmid, viaFbIds)
+        checkBmResponse["bmid"] = bmid
+        checkBmResponse["name"] = bm["name"]
+        checkBmResponseList.append(checkBmResponse)
+
+    checkAllBmProcess = Process.objects.filter(name="checkAllBm")
+    serializer = ProcessSerializer(checkAllBmProcess[0],
+                                   data={"name": "checkAllBm", "status": 0})
+    if serializer.is_valid():
+        serializer.save()
+        return ({"success": True, "status": True, "message":  "Quá trình kiểm tra toàn bộ BM đã hoàn tất"})
+    return ({"success": True, "status": True, "message": "Đã có lỗi hệ thống xảy ra", "error": serializer.errors})
+
+
+def backupAllBms():
+    getListBmResponse = getListBm(None)
+    BmList = getListBmResponse["data"]
+    for bm in BmList:
+        bmid = bm["id"]
+        viaIds = list(map(lambda owner: owner["id"], bm["owner"]))
+        checkBmResponse = checkBm(viaIds, bmid)
+    return ({"success": True, "status": True, "message": "Quá trình backup toàn bộ BM đã hoàn tất"})

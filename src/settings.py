@@ -34,7 +34,7 @@ INSTALLED_APPS = [
     "django.contrib.admin", "django.contrib.auth",
     "django.contrib.contenttypes", "django.contrib.sessions",
     "django.contrib.messages", "django.contrib.staticfiles", "rest_framework",
-    "corsheaders", "apis.apps.ApisConfig"
+    "corsheaders", "apis.apps.ApisConfig", 'django_crontab',
 ]
 
 MIDDLEWARE = [
@@ -49,6 +49,11 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "src.urls"
+
+CRONJOBS = [
+    ('0 1 * * *', 'apis.cron.autoCheckVias'),
+    ('10 1 * * *', 'apis.cron.autoCheckBms')
+]
 
 TEMPLATES = [
     {
