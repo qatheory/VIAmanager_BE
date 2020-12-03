@@ -47,3 +47,12 @@ class Bm(models.Model):
 class Process(models.Model):
     name = models.CharField(max_length=100, blank=True)
     status = models.SmallIntegerField(blank=True, default=0)
+
+
+class AutomationLog(models.Model):
+    createdDate = models.DateTimeField(auto_now_add=True)
+    process = models.CharField(max_length=100, blank=True)
+    log = models.TextField(blank=True)
+    status = models.CharField(max_length=100, blank=True)
+    error = models.CharField(max_length=100, blank=True)
+    hide = models.BooleanField(default=False)

@@ -20,4 +20,6 @@ urlpatterns = [
     path("bms/ads_acc/", views.BmAdsAcc.as_view()),
     path("ads_acc/", views.AdsAccList.as_view()),
     path("bms/<int:pk>/", views.BmDetail.as_view()),
+    path("logs/", views.LogList.as_view()),
+    path("log/<int:pk>/", views.LogList.as_view()),
 ]

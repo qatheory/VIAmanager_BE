@@ -1,6 +1,7 @@
 from apis.serializers import ViasSerializer, BmsSerializer, ProcessSerializer
 from apis.models import Via, Bm, Process
 from datetime import date, datetime
+from apis.services.common import log
 import requests
 
 
@@ -147,7 +148,8 @@ def saveBmStatus(bmid, via, bmStatus):
         return True
 
 
-def checkBm(bmid, viaFbIds):
+def checkBm(bmid, viaFbIds, bmName=None, log=False):
+
     if bmid == None:
         return ({"success": False, "message": "Hãy kiểm tra lại id của BM"})
     if viaFbIds == None:
@@ -183,6 +185,9 @@ def checkBm(bmid, viaFbIds):
         adAccountsFromBm = getAdAccountsFromBmResult.json()["data"]
         if len(adAccountsFromBm) == 0:
             saveBmStatusResult = saveBmStatus(bmid, via, 2)
+            if log == True:
+                log({"process": "checkBM", "log": "BM {} hiện tại không sở hữu tài khoản quảng cáo, hãy tạo tài khoản quảng cáo trước khi kiểm tra BM".format(
+                    bmName), "status": "neutral", "error": "ERROR"})
             return ({"success": False, "message": "BM hiện tại không sở hữu tài khoản quảng cáo, hãy tạo tài khoản quảng cáo trước khi kiểm tra BM"})
         adAccountId = adAccountsFromBm[0]["id"]
         updateAdAccoutResult = requests.post(
@@ -212,6 +217,9 @@ def checkBm(bmid, viaFbIds):
                 print("checked")
             else:
                 saveBmStatusResult = saveBmStatus(bmid, via, 2)
+                if log == True:
+                    log({"process": "checkBM", "log": "BM {}. Đã có lỗi xảy ra trong quá trình kết nối với facebook với via {}. error code: {}".format(bmName, via["name"],
+                                                                                                                                                       updateAdAccoutResult.json()["error"]["code"]), "status": "false", "error": "FATAL"})
                 return ({
                     "success": False,
                     "message": "Đã có lỗi xảy ra trong quá trình kết nối với facebook với via {}. error code: {}".format(via["name"],
@@ -225,13 +233,27 @@ def checkBm(bmid, viaFbIds):
             errorLogs.append(saveBmStatusResult)
     if isBmChecked == True:
         successMessage = "BM không bị giới hạn"
+        if log == True:
+            logMessage = "BM {} không bị giới hạn".format(bmName)
+            log({"process": "checkBM", "log": logMessage,
+                 "status": "success", "error": "NONE"})
         if bmStatus == 0:
             successMessage = "BM đã bị giới hạn"
+            if log == True:
+                logMessage = "BM {} đã bị giới hạn".format(bmName)
+                log({"process": "checkBM", "log": logMessage,
+                     "status": "warning", "error": "NONE"})
         return ({"success": True, "status": bmStatus, "message": successMessage, "errors": errorLogs})
 
     print(errorMessage)
     if viasLimited == True:
+        if log == True:
+            log({"process": "checkBM", "log": "Tất cả VIA sở hữu BM {} đều đã bị hạn chế, hãy kiểm tra lại access token của VIA".format(bmName),
+                 "status": "warning", "error": "NONE"})
         return ({"success": False, "message": "Tất cả VIA sở hữu BM này đều đã bị hạn chế, hãy kiểm tra lại access token của VIA", "errors": errorLogs})
+    if log == True:
+        log({"process": "checkBM", "log": "Đã có lỗi không xác định xảy ra với BM {}".format(bmName),
+             "status": "warning", "error": "FATAL"})
     return ({"success": False, "message": errorMessage, "errors": errorLogs})
 
 
@@ -346,7 +368,7 @@ def checkAllBms(force):
     for bm in BmList:
         bmid = bm["id"]
         viaFbIds = list(map(lambda owner: owner["id"], bm["owner"]))
-        checkBmResponse = checkBm(bmid, viaFbIds)
+        checkBmResponse = checkBm(bmid, viaFbIds, bm, True)
         checkBmResponse["bmid"] = bmid
         checkBmResponse["name"] = bm["name"]
         checkBmResponseList.append(checkBmResponse)

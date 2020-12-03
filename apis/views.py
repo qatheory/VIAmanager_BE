@@ -6,8 +6,8 @@ from django.contrib.auth.models import User
 from rest_framework import permissions, authentication
 from rest_framework import generics
 from apis.serializers import UserSerializer, UserFullSerializer, UserUpdate, UserResetPasswordSerializer
-from apis.serializers import ViasSerializer, BmsSerializer, ProcessSerializer
-from apis.models import Via, Bm, Process
+from apis.serializers import ViasSerializer, BmsSerializer, ProcessSerializer, LogSerializer
+from apis.models import Via, Bm, Process, AutomationLog
 from rest_framework.decorators import api_view, permission_classes
 from django.db.models import Q
 from apis.services.bm import checkBm, getListBm, setCheckingProgress, getCheckingProgress, checkAllBms, backupBm, backupAllBms
@@ -440,6 +440,38 @@ class BmAdsAcc(APIView):
             })
         return Response(bmInfo.json()["data"])
 
+
+class LogList(APIView):
+    permission_classes = [isAdminOrReadOnly]
+
+    def get(self, request, format=None):
+        selectedDate = request.GET.get("selectedDate", None)
+        showAll = request.GET.get("showAll", None)
+        logModel = AutomationLog.objects.all()
+        if (selectedDate):
+            logModel = logModel.filter(selectedDate=selectedDate)
+        if (showAll == None):
+            logModel = logModel.filter(hide=False)
+        serializer = LogSerializer(logModel, many=True)
+        return Response(serializer.data)
+
+
+class LogDetail(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self, pk):
+        try:
+            return AutomationLog.objects.get(pk=pk)
+        except AutomationLog.DoesNotExist:
+            raise Http404
+
+    def put(self, request, pk, format=None):
+        log = self.get_object(pk)
+        serializer = LogSerializer(log, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # Workspace APIview
 # class WorkspaceList(APIView):

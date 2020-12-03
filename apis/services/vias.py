@@ -1,6 +1,7 @@
 from apis.serializers import ViasSerializer, BmsSerializer, ProcessSerializer
 from apis.models import Via, Bm, Process
 from datetime import date, datetime
+from apis.services.common import log
 import requests
 
 
@@ -11,7 +12,7 @@ def getViafromId(id):
         return "error"
 
 
-def checkVias(pk):
+def checkVias(pk, log=False):
     viaModel = getViafromId(pk)
     if viaModel == "error":
         return ({"success": False,
@@ -32,15 +33,24 @@ def checkVias(pk):
             serializer = ViasSerializer(viaModel, data={'status': None})
             if serializer.is_valid():
                 serializer.save()
+            if log == True:
+                log({"process": "checkVia", "log": "Via {} Đã được thay đổi mật khẩu nên access token không còn hiệu lực, hãy cập nhật lại".format(
+                    via["name"]), "status": "false", "error": "ERROR"})
             return ({"success": False,
                      "status": "undefined",
                      "messages": "Via {} Đã được thay đổi mật khẩu nên access token không còn hiệu lực, hãy cập nhật lại".format(via["name"])
                      })
+        if log == True:
+            log({"process": "checkVia", "log": "Via {} Xảy ra lỗi không xác định".format(
+                via["name"]), "status": "false", "error": "FATAL"})
         return ({"success": False,
                  "messages": "Via {} Xảy ra lỗi không xác định".format(via["name"])
                  })
     listBusiness = BmsFromID.json()["businesses"]["data"]
     if len(listBusiness) == 0:
+        if log == True:
+            log({"process": "checkVia", "log": "Via {} không hoạt động, user chưa được kết nối với BM".format(
+                via["name"]), "status": "false", "error": "ERROR"})
         return ({"success": False,
                  "messages": "Via không hoạt động, user chưa được kết nối với BM"})
     listPendingUsers = []
@@ -63,14 +73,23 @@ def checkVias(pk):
                 serializer = ViasSerializer(viaModel, data={'status': 0})
                 if serializer.is_valid():
                     serializer.save()
+                    if log == True:
+                        log({"process": "checkVia", "log": "Via {} hiện đã bị hạn chế".format(
+                            via["name"]), "status": "warning", "error": "NONE"})
                     return ({"success": True,
                              "status": False,
                              "messages": "Via {} hiện đã bị hạn chế".format(via["name"])
                              })
+                if log == True:
+                    log({"process": "checkVia", "log": "Via {} hiện đã bị hạn chế. Tuy nhiên có lỗi khi kết nối với Database".format(
+                        via["name"]), "status": "warning", "error": "ERROR"})
                 return ({"success": True,
                          "status": False,
                          "messages": "Via {} hiện đã bị hạn chế. Tuy nhiên có lỗi khi kết nối với Database".format(via["name"])
                          })
+            if log == True:
+                log({"process": "checkVia", "log": "Đã có lỗi xảy ra hãy thử kiểm tra lại access token của Via {}".format(
+                    via["name"]), "status": "false", "error": "FATAL"})
             return ({"success": False,
                      "messages": "Đã có lỗi xảy ra hãy thử kiểm tra lại access token của Via"})
         serializer = ViasSerializer(viaModel, data={'status': 1})
@@ -80,6 +99,9 @@ def checkVias(pk):
                      "status": True,
                      "messages": "Via {} hiện đang hoạt động".format(via["name"])
                      })
+        if log == True:
+            log({"process": "checkVia", "log": "Via {} hiện đang hoạt động. Tuy nhiên có lỗi khi kết nối với Database".format(
+                via["name"]), "status": "success", "error": "ERROR"})
         return ({"success": True,
                  "status": True,
                  "messages": "Via {} hiện đang hoạt động. Tuy nhiên có lỗi khi kết nối với Database".format(via["name"])
@@ -103,14 +125,23 @@ def checkVias(pk):
                 serializer = ViasSerializer(viaModel, data={'status': 0})
                 if serializer.is_valid():
                     serializer.save()
+                    if log == True:
+                        log({"process": "checkVia", "log": "Via {} hiện đã bị hạn chế".format(
+                            via["name"]), "status": "warning", "error": "NONE"})
                     return ({"success": True,
                              "status": False,
                              "messages": "Via {} hiện đã bị hạn chế".format(via["name"])
                              })
+                if log == True:
+                    log({"process": "checkVia", "log": "Via {} hiện đã bị hạn chế. Tuy nhiên có lỗi khi kết nối với Database".format(
+                        via["name"]), "status": "warning", "error": "ERROR"})
                 return ({"success": True,
                          "status": False,
                          "messages": "Via {} hiện đã bị hạn chế. Tuy nhiên có lỗi khi kết nối với Database".format(via["name"])
                          })
+            if log == True:
+                log({"process": "checkVia", "log": "Đã có lỗi xảy ra hãy thử kiểm tra lại access token của Via {}".format(
+                    via["name"]), "status": "false", "error": "FATAL"})
             return ({"success": False,
                      "messages": "Đã có lỗi xảy ra trong quá trình kết nối với Facebook"})
         serializer = ViasSerializer(viaModel, data={"status": 1})
@@ -120,10 +151,16 @@ def checkVias(pk):
                      "status": True,
                      "messages": "Via {} hiện đang hoạt động".format(via["name"])
                      })
+        if log == True:
+            log({"process": "checkVia", "log": "Via {} hiện đang hoạt động. Tuy nhiên có lỗi khi kết nối với Database".format(
+                via["name"]), "status": "success", "error": "ERROR"})
         return ({"success": True,
                  "status": True,
                  "messages": "Via {} hiện đang hoạt động. Tuy nhiên có lỗi khi kết nối với Database".format(via["name"])
                  })
+    if log == True:
+        log({"process": "checkVia", "log": "Lỗi không xác định với Via {}".format(
+            via["name"]), "status": "false", "error": "FATAL"})
     return ({"success": False,
              "messages": "Lỗi không xác định"})
 
@@ -170,7 +207,7 @@ def checkAllVias(force):
     viasz = ViasSerializer(viaModel, many=True)
     vias = viasz.data
     for via in vias:
-        checkVias(via["id"])
+        checkVias(via["id"], True)
     checkAllViaProcess = Process.objects.filter(name="checkAllVia")
     serializer = ProcessSerializer(checkAllViaProcess[0],
                                    data={"name": "checkAllVia", "status": 0})
