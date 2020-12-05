@@ -196,8 +196,10 @@ def checkViaProcess():
 #     return ({"success": False, "process": False})
 
 
-def checkAllVias(force):
+def checkAllVias(force=False):
+    log = True
     if force == False:
+        log = False
         checkProcess = checkViaProcess()
         if checkProcess["success"] == False:
             return ({"success": False, "status": False, "message": "đã có lỗi xảy ra với hệ thống"})
@@ -207,7 +209,7 @@ def checkAllVias(force):
     viasz = ViasSerializer(viaModel, many=True)
     vias = viasz.data
     for via in vias:
-        checkVias(via["id"], True)
+        checkVias(via["id"], log)
     checkAllViaProcess = Process.objects.filter(name="checkAllVia")
     serializer = ProcessSerializer(checkAllViaProcess[0],
                                    data={"name": "checkAllVia", "status": 0})

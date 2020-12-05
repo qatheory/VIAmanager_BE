@@ -257,12 +257,21 @@ def checkBm(bmid, viaFbIds, bmName=None, log=False):
     return ({"success": False, "message": errorMessage, "errors": errorLogs})
 
 
-def backupBm(owners, bmid):
+def backupBm(owners, bmid, log=False):
     if(not owners):
+        if log == True:
+            log({"process": "backupBM", "log": "Chưa cung cấp via cho BM {}".format(bmName),
+                 "status": "false", "error": "FATAL"})
         return ({"success": False, "status": "error", "messages": "Chưa cung cấp via"})
     if len(owners) == 0:
+        if log == True:
+            log({"process": "backupBM", "log": "Chưa cung cấp via cho BM {}".format(bmName),
+                 "status": "false", "error": "FATAL"})
         return ({"success": False, "status": "error", "messages": "Chưa cung cấp via"})
     if(not bmid):
+        if log == True:
+            log({"process": "backupBM", "log": "Không tìm thấy BM {}".format(bmName),
+                 "status": "false", "error": "FATAL"})
         return ({"success": False, "status": "error", "messages": "Chưa cung cấp bm"})
     listViasId = []
     for owner in owners:
@@ -271,6 +280,9 @@ def backupBm(owners, bmid):
     vias = vias.filter(status=1)
     viasz = ViasSerializer(vias, many=True)
     if len(viasz.data) == 0:
+        if log == True:
+            log({"process": "backupBM", "log": "BM {} Không được sở hữu bởi Via còn hoạt động".format(bmName),
+                 "status": "false", "error": "ERROR"})
         return ({"success": False, "messages": "BM Không được sở hữu bởi Via còn hoạt động"})
     via = viasz.data[0]
     listPendingUsersResponse = requests.get(
@@ -305,8 +317,14 @@ def backupBm(owners, bmid):
     createBackupResult = createBackupResponse.json()
 
     if("error" in createBackupResult):
+        if log == True:
+            log({"process": "backupBM", "log": "Đã có lỗi xảy ra với BM {}, hãy kiểm tra lại access token".format(bmName),
+                 "status": "false", "error": "ERROR"})
         return ({"success": False, "status": "error", "messages": "Đã có lỗi xảy ra, hãy kiểm tra lại access token"})
     if isSuccessfulClearBackup == False:
+        if log == True:
+            log({"process": "backupBM", "log": "Cấn kiểm tra lại BM {}, việc dọn sạch link backup cũ xảy ra lỗi".format(bmName),
+                 "status": "false", "error": "ERROR"})
         return ({"success": True, "status": "warning", "messages": "Cấn kiểm tra lại BM, việc dọn sạch link backup cũ xảy ra lỗi"})
     BackupInfoResponse = requests.get(
         url="https://graph.facebook.com/v8.0/{}".format(
@@ -320,16 +338,19 @@ def backupBm(owners, bmid):
     data = {"backup_email": BackupInfo["email"],
             "backup_link": BackupInfo["invite_link"],
             "expiration_date": BackupInfo["expiration_time"]}
+    if log == True:
+        log({"process": "backupBM", "log": "Làm mới link backup thành công cho BM {}".format(bmName),
+             "status": "success", "error": "NONE"})
     return ({"success": True, "status": "success", "messages": "Làm mới link backup thành công", "data": data})
 
 
-def checkBmProcess():
-    checkAllBmProcess = Process.objects.filter(name="checkAllBm")
+def checkBmProcess(process):
+    checkAllBmProcess = Process.objects.filter(name=process)
     checkAllBmProcessSz = ProcessSerializer(checkAllBmProcess, many=True)
     print(checkAllBmProcessSz.data[0]["status"])
     if checkAllBmProcessSz.data == []:
         serializer = ProcessSerializer(
-            data={"name": "checkAllBm", "status": 1})
+            data={"name": process, "status": 1})
         if serializer.is_valid():
             serializer.save()
             return {"success": True, "process": False}
@@ -337,7 +358,7 @@ def checkBmProcess():
             return {"success": False, "process": False}
     if checkAllBmProcessSz.data[0]["status"] == 0:
         serializer = ProcessSerializer(checkAllBmProcess[0],
-                                       data={"name": "checkAllBm", "status": 1})
+                                       data={"name": process, "status": 1})
         if serializer.is_valid():
             serializer.save()
             return {"success": True, "process": False}
@@ -355,9 +376,11 @@ def checkBmProcess():
     #     return Response({"success": False, "process": False})
 
 
-def checkAllBms(force):
+def checkAllBms(force=False):
+    log = True
     if force == False:
-        checkProcess = checkBmProcess()
+        log = False
+        checkProcess = checkBmProcess("checkAllBm")
         if checkProcess["success"] == False:
             return ({"success": False, "status": False, "message": "đã có lỗi xảy ra với hệ thống"})
         if checkProcess["process"] == True:
@@ -368,7 +391,7 @@ def checkAllBms(force):
     for bm in BmList:
         bmid = bm["id"]
         viaFbIds = list(map(lambda owner: owner["id"], bm["owner"]))
-        checkBmResponse = checkBm(bmid, viaFbIds, bm, True)
+        checkBmResponse = checkBm(bmid, viaFbIds, bm, log)
         checkBmResponse["bmid"] = bmid
         checkBmResponse["name"] = bm["name"]
         checkBmResponseList.append(checkBmResponse)
@@ -382,11 +405,19 @@ def checkAllBms(force):
     return ({"success": True, "status": True, "message": "Đã có lỗi hệ thống xảy ra", "error": serializer.errors})
 
 
-def backupAllBms():
+def backupAllBms(force=False):
+    log = True
+    if force == False:
+        log = False
+        checkProcess = checkBmProcess("backupAllBm")
+        if checkProcess["success"] == False:
+            return ({"success": False, "status": False, "message": "đã có lỗi xảy ra với hệ thống"})
+        if checkProcess["process"] == True:
+            return ({"success": True, "status": False, "message": "Quá trình backup toàn bộ BM đang diễn ra"})
     getListBmResponse = getListBm(None)
     BmList = getListBmResponse["data"]
     for bm in BmList:
         bmid = bm["id"]
         viaIds = list(map(lambda owner: owner["id"], bm["owner"]))
-        checkBmResponse = checkBm(viaIds, bmid)
+        checkBmResponse = backupBm(viaIds, bmid, log)
     return ({"success": True, "status": True, "message": "Quá trình backup toàn bộ BM đã hoàn tất"})

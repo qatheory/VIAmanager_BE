@@ -318,7 +318,7 @@ class CheckAllVias(APIView):
     #     return Response({"success": False, "process": False})
 
     def post(self, request, format=None):
-        checkAllViasResult = checkAllVias(False)
+        checkAllViasResult = checkAllVias()
         return Response(checkAllViasResult)
 
 
@@ -355,7 +355,7 @@ class CheckAllBm(APIView):
         return Response({"success": False, "process": False})
 
     def post(self, request, format=None):
-        checkAllBmsResult = checkAllBms(False)
+        checkAllBmsResult = checkAllBms()
         return Response(checkAllBmsResult)
 
 
