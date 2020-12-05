@@ -382,6 +382,15 @@ class BackupBm(APIView):
 class BackupAllBm(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    def get(self, request, format=None):
+        checkAllBmProcess = Process.objects.filter(name="backupAllBm")
+        serializer = ProcessSerializer(checkAllBmProcess[0],
+                                       data={"name": "backupAllBm", "status": 0})
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"success": True, "process": False})
+        return Response({"success": False, "process": False})
+
     def post(self, request, format=None):
         backupBmResult = backupAllBms()
         return Response(backupBmResult)

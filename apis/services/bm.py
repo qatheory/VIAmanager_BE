@@ -274,6 +274,7 @@ def backupBm(owners, bmid, log=False):
                  "status": "false", "error": "FATAL"})
         return ({"success": False, "status": "error", "messages": "Chưa cung cấp bm"})
     listViasId = []
+    print(owners)
     for owner in owners:
         listViasId.append(owner["id"])
     vias = Via.objects.filter(id__in=listViasId)
@@ -347,7 +348,6 @@ def backupBm(owners, bmid, log=False):
 def checkBmProcess(process):
     checkAllBmProcess = Process.objects.filter(name=process)
     checkAllBmProcessSz = ProcessSerializer(checkAllBmProcess, many=True)
-    print(checkAllBmProcessSz.data[0]["status"])
     if checkAllBmProcessSz.data == []:
         serializer = ProcessSerializer(
             data={"name": process, "status": 1})
@@ -418,6 +418,13 @@ def backupAllBms(force=False):
     BmList = getListBmResponse["data"]
     for bm in BmList:
         bmid = bm["id"]
-        viaIds = list(map(lambda owner: owner["id"], bm["owner"]))
+        # viaIds = list(map(lambda owner: owner["id"], bm["owner"]))
+        viaIds = bm["owner"]
         checkBmResponse = backupBm(viaIds, bmid, log)
-    return ({"success": True, "status": True, "message": "Quá trình backup toàn bộ BM đã hoàn tất"})
+    backupAllBmProcess = Process.objects.filter(name="backupAllBm")
+    serializer = ProcessSerializer(backupAllBmProcess[0],
+                                   data={"name": "backupAllBm", "status": 0})
+    if serializer.is_valid():
+        serializer.save()
+        return ({"success": True, "status": True, "message":  "Quá trình backup toàn bộ BM đã hoàn tất"})
+    return ({"success": True, "status": True, "message": "Đã có lỗi hệ thống xảy ra", "error": serializer.errors})

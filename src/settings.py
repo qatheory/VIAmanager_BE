@@ -52,7 +52,8 @@ ROOT_URLCONF = "src.urls"
 
 CRONJOBS = [
     ('0 1 * * *', 'apis.cron.autoCheckVias'),
-    ('10 1 * * *', 'apis.cron.autoCheckBms')
+    ('10 1 * * *', 'apis.cron.autoCheckBms'),
+    ('30 1 * * *', 'apis.cron.autoBackupBms')
 ]
 
 TEMPLATES = [

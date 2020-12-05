@@ -12,3 +12,9 @@ def autoCheckBms():
     checkAllBmsResult = checkAllBms(True)
     print(checkAllBmsResult)
     return True
+
+
+def autoBackupBms():
+    backupAllBmsResult = backupAllBms(True)
+    print(backupAllBmsResult)
+    return True
