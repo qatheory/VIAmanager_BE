@@ -46,6 +46,7 @@ def checkVias(pk, log=False):
         return ({"success": False,
                  "messages": "Via {} Xảy ra lỗi không xác định".format(via["name"])
                  })
+
     listBusiness = BmsFromID.json()["businesses"]["data"]
     if len(listBusiness) == 0:
         if log == True:
@@ -54,10 +55,13 @@ def checkVias(pk, log=False):
         return ({"success": False,
                  "messages": "Via không hoạt động, user chưa được kết nối với BM"})
     listPendingUsers = []
-    if("pending_users" in listBusiness[0]):
-        listPendingUsers = listBusiness[0]["pending_users"]["data"]
+    listBusinessContainBackup = list(
+        filter(lambda x: "pending_users" in x, listBusiness))
 
-    if len(listPendingUsers) == 0:
+    # if("pending_users" in listBusiness[0]):
+    #     listPendingUsers = listBusiness[0]["pending_users"]["data"]
+    # print(listBusinessContainBackup)
+    if len(listBusinessContainBackup) == 0:
         today = date.today()
         formattedDate = today.strftime("%d_%m_%Y")
         checkingResult = requests.post(
@@ -68,6 +72,7 @@ def checkVias(pk, log=False):
                 via["accessToken"],
                 "role": "ADMIN",
                 "email": "{}@backup.data".format(formattedDate)})
+        print(checkingResult.json())
         if "error" in checkingResult.json():
             if checkingResult.json()["error"]["code"] == 368 or checkingResult.json()["error"]["code"] == 100:
                 serializer = ViasSerializer(viaModel, data={'status': 0})
@@ -107,10 +112,12 @@ def checkVias(pk, log=False):
                  "messages": "Via {} hiện đang hoạt động. Tuy nhiên có lỗi khi kết nối với Database".format(via["name"])
                  })
     else:
+        backupUser = listBusinessContainBackup[0]["pending_users"]["data"]
+        print(backupUser)
         createdDate = datetime.strptime(
-            listPendingUsers[0]["created_time"], "%Y-%m-%dT%H:%M:%S%z")
+            backupUser[0]["created_time"], "%Y-%m-%dT%H:%M:%S%z")
         formattedDate = createdDate.strftime("%d_%m_%Y")
-        selectedPendingUser = listPendingUsers[0]
+        selectedPendingUser = backupUser[0]
         checkingResult = requests.post(
             url="https://graph.facebook.com/v8.0/{}".format(
                 selectedPendingUser["id"]),
@@ -120,6 +127,7 @@ def checkVias(pk, log=False):
                 "role": "ADMIN",
                 # "email": "{}@backup.data".format(formattedDate)
             })
+        print(checkingResult.json())
         if "error" in checkingResult.json():
             if checkingResult.json()["error"]["code"] == 368:
                 serializer = ViasSerializer(viaModel, data={'status': 0})

@@ -196,15 +196,17 @@ def checkBm(bmid, viaFbIds, bmName=None, log=False):
                 "access_token": via["accessToken"],
                 "is_notifications_enabled": "true",
             })
-
+        print(updateAdAccoutResult.json())
         if "error" in updateAdAccoutResult.json():
-            if updateAdAccoutResult.json()["error"]["code"] == 368 or updateAdAccoutResult.json()["error"]["code"] == 100:
+            # or updateAdAccoutResult.json()["error"]["code"] == 100:
+            if updateAdAccoutResult.json()["error"]["code"] == 368:
                 notWorkingVias.append(
                     {"viaId": via["id"], "name": via["name"]})
                 viaModel = Via.objects.filter(
-                    isDeleted=False, fbid=via["fbid"])
+                    isDeleted=False, fbid=via["fbid"]).first()
                 serializer = ViasSerializer(
                     viaModel, data={'status': 0})
+
                 if serializer.is_valid():
                     serializer.save()
                     continue
